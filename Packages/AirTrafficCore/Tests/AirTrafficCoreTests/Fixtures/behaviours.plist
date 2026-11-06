@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Synthetische Choosy-Regeln, nur example.*-Domains. -->
+<plist version="1.0">
+<array>
+	<dict>
+		<key>title</key><string>Wiki</string>
+		<key>enabled</key><true/>
+		<key>predicate</key><string>URL CONTAINS[c] "wiki.example.org"</string>
+		<key>behaviour</key><integer>6</integer>
+		<key>behaviourArgument</key>
+		<dict>
+			<key>path</key><string>/Applications/Example Browser.app</string>
+			<key>type</key><string>application</string>
+		</dict>
+	</dict>
+	<dict>
+		<key>title</key><string>Intranet</string>
+		<key>enabled</key><true/>
+		<key>predicate</key><string>URL BEGINSWITH "https://intranet.example.com"</string>
+		<key>behaviour</key><integer>6</integer>
+		<key>behaviourArgument</key>
+		<dict>
+			<key>path</key><string>/Applications/Other Browser.app</string>
+		</dict>
+	</dict>
+	<dict>
+		<key>title</key><string>PDFs</string>
+		<key>enabled</key><true/>
+		<key>predicate</key><string>URL ENDSWITH ".pdf"</string>
+		<key>behaviour</key><integer>2</integer>
+	</dict>
+	<dict>
+		<key>title</key><string>Video calls</string>
+		<key>enabled</key><true/>
+		<key>predicate</key><string>URL CONTAINS[c] "meet.example.net" OR URL CONTAINS[c] "video.example.net"</string>
+		<key>behaviour</key><integer>6</integer>
+		<key>behaviourArgument</key>
+		<dict>
+			<key>path</key><string>/Applications/Example Browser.app</string>
+		</dict>
+	</dict>
+	<dict>
+		<key>title</key><string>Admin</string>
+		<key>enabled</key><true/>
+		<key>predicate</key><string>URL CONTAINS "example.com" AND URL CONTAINS "/admin"</string>
+		<key>behaviour</key><integer>6</integer>
+		<key>behaviourArgument</key>
+		<dict>
+			<key>path</key><string>/Applications/Other Browser.app</string>
+		</dict>
+	</dict>
+	<dict>
+		<key>title</key><string>Old site</string>
+		<key>enabled</key><false/>
+		<key>predicate</key><string>URL CONTAINS "old.example.com"</string>
+		<key>behaviour</key><integer>6</integer>
+		<key>behaviourArgument</key>
+		<dict>
+			<key>path</key><string>/Applications/Example Browser.app</string>
+		</dict>
+	</dict>
+	<dict>
+		<key>title</key><string>From mail</string>
+		<key>enabled</key><true/>
+		<key>predicate</key><string>sourceApp == "com.example.mail"</string>
+		<key>behaviour</key><integer>6</integer>
+		<key>behaviourArgument</key>
+		<dict>
+			<key>path</key><string>/Applications/Example Browser.app</string>
+		</dict>
+	</dict>
+	<dict>
+		<key>title</key><string>Everything else</string>
+		<key>enabled</key><true/>
+		<key>predicate</key><string>TRUEPREDICATE</string>
+		<key>behaviour</key><integer>0</integer>
+	</dict>
+</array>
+</plist>

@@ -1,0 +1,281 @@
+{
+  "schemaVersion": 1,
+  "browsers": [
+    {
+      "bundleIdentifier": "com.apple.Safari",
+      "path": "/Applications/Safari.app",
+      "displayName": "Safari"
+    },
+    {
+      "bundleIdentifier": "com.google.Chrome",
+      "path": "/Applications/Google Chrome.app",
+      "displayName": "Google Chrome"
+    },
+    {
+      "bundleIdentifier": "org.mozilla.firefox",
+      "path": "/Applications/Firefox.app",
+      "displayName": "Firefox"
+    },
+    {
+      "bundleIdentifier": "com.microsoft.edgemac",
+      "path": "/Applications/Microsoft Edge.app",
+      "displayName": "Microsoft Edge"
+    }
+  ],
+  "rules": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "Pull Requests im Review-Tool",
+      "enabled": true,
+      "match": "all",
+      "conditions": [
+        {
+          "type": "host",
+          "op": "equals",
+          "value": "github.com",
+          "caseSensitive": false
+        },
+        {
+          "type": "path",
+          "op": "regex",
+          "value": "^/acme/[^/]+/pull/\\d+",
+          "caseSensitive": false
+        }
+      ],
+      "rewrites": [
+        {
+          "pattern": "^https://github\\.com/acme/([^/]+)/pull/(\\d+)(/[^?#]*)?(.*)$",
+          "template": "https://review.example.com/acme/$1/$2$4",
+          "caseSensitive": false
+        }
+      ],
+      "action": {
+        "type": "open",
+        "app": {
+          "bundleIdentifier": "com.google.Chrome",
+          "path": "/Applications/Google Chrome.app",
+          "displayName": "Google Chrome"
+        }
+      },
+      "testURL": "https://github.com/acme/webshop/pull/42/files?w=1"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "name": "Linear in der App",
+      "enabled": true,
+      "match": "all",
+      "conditions": [
+        {
+          "type": "host",
+          "op": "equals",
+          "value": "linear.app",
+          "caseSensitive": false
+        }
+      ],
+      "rewrites": [],
+      "action": {
+        "type": "open",
+        "app": {
+          "bundleIdentifier": "com.linear",
+          "path": "/Applications/Linear.app",
+          "displayName": "Linear"
+        }
+      },
+      "testURL": "https://linear.app/acme/issue/WEB-123/checkout-button"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "name": "Figma-Dateien",
+      "enabled": true,
+      "match": "any",
+      "conditions": [
+        {
+          "type": "host",
+          "op": "equals",
+          "value": "figma.com",
+          "caseSensitive": false
+        },
+        {
+          "type": "host",
+          "op": "endsWith",
+          "value": ".figma.com",
+          "caseSensitive": false
+        }
+      ],
+      "rewrites": [],
+      "action": {
+        "type": "open",
+        "app": {
+          "bundleIdentifier": "com.figma.Desktop",
+          "path": "/Applications/Figma.app",
+          "displayName": "Figma"
+        }
+      },
+      "testURL": "https://www.figma.com/design/AbC123/Webshop-Redesign"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000004",
+      "name": "Zoom-Meetings",
+      "enabled": true,
+      "match": "all",
+      "conditions": [
+        {
+          "type": "host",
+          "op": "wildcard",
+          "value": "*.zoom.us",
+          "caseSensitive": false
+        },
+        {
+          "type": "path",
+          "op": "beginsWith",
+          "value": "/j/",
+          "caseSensitive": false
+        }
+      ],
+      "rewrites": [],
+      "action": {
+        "type": "open",
+        "app": {
+          "bundleIdentifier": "us.zoom.xos",
+          "path": "/Applications/zoom.us.app",
+          "displayName": "zoom.us"
+        }
+      },
+      "testURL": "https://acme.zoom.us/j/1234567890?pwd=example"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000005",
+      "name": "Newsletter ohne Tracking",
+      "enabled": true,
+      "match": "all",
+      "conditions": [
+        {
+          "type": "host",
+          "op": "equals",
+          "value": "news.example.com",
+          "caseSensitive": false
+        }
+      ],
+      "rewrites": [
+        {
+          "pattern": "^(https://news\\.example\\.com/[^?#]*)\\?[^#]*(#.*)?$",
+          "template": "$1$2",
+          "caseSensitive": false
+        }
+      ],
+      "action": {
+        "type": "openFirstRunning",
+        "fallback": {
+          "bundleIdentifier": "com.apple.Safari",
+          "path": "/Applications/Safari.app",
+          "displayName": "Safari"
+        }
+      },
+      "testURL": "https://news.example.com/2026/herbst-release?utm_source=mail&utm_campaign=nov"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000006",
+      "name": "acme-Seiten in Firefox",
+      "enabled": true,
+      "match": "all",
+      "conditions": [
+        {
+          "type": "host",
+          "op": "endsWith",
+          "value": "acme.example",
+          "caseSensitive": false
+        }
+      ],
+      "rewrites": [],
+      "action": {
+        "type": "open",
+        "app": {
+          "bundleIdentifier": "org.mozilla.firefox",
+          "path": "/Applications/Firefox.app",
+          "displayName": "Firefox"
+        }
+      },
+      "testURL": "https://shop.acme.example/kasse"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000007",
+      "name": "Intranet in Edge",
+      "enabled": true,
+      "match": "all",
+      "conditions": [
+        {
+          "type": "host",
+          "op": "equals",
+          "value": "intranet.acme.example",
+          "caseSensitive": false
+        }
+      ],
+      "rewrites": [],
+      "action": {
+        "type": "open",
+        "app": {
+          "bundleIdentifier": "com.microsoft.edgemac",
+          "path": "/Applications/Microsoft Edge.app",
+          "displayName": "Microsoft Edge"
+        }
+      },
+      "testURL": "https://intranet.acme.example/wiki/urlaub"
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000008",
+      "name": "Links aus Slack: Auswahl zeigen",
+      "enabled": true,
+      "match": "all",
+      "conditions": [
+        {
+          "type": "sourceApp",
+          "bundleIdentifier": "com.tinyspeck.slackmacgap",
+          "negated": false
+        }
+      ],
+      "rewrites": [],
+      "action": {
+        "type": "prompt",
+        "scope": "all"
+      }
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000009",
+      "name": "Alte Ticket-Links umleiten",
+      "enabled": false,
+      "match": "all",
+      "conditions": [
+        {
+          "type": "host",
+          "op": "equals",
+          "value": "tickets.example.com",
+          "caseSensitive": false
+        }
+      ],
+      "rewrites": [
+        {
+          "pattern": "^https://tickets\\.example\\.com/browse/([A-Z]+-\\d+).*$",
+          "template": "https://linear.app/acme/issue/$1",
+          "caseSensitive": false
+        }
+      ],
+      "action": {
+        "type": "open",
+        "app": {
+          "bundleIdentifier": "com.linear",
+          "path": "/Applications/Linear.app",
+          "displayName": "Linear"
+        }
+      },
+      "testURL": "https://tickets.example.com/browse/WEB-77"
+    }
+  ],
+  "defaultAction": {
+    "type": "openFirstRunning",
+    "fallback": {
+      "bundleIdentifier": "com.apple.Safari",
+      "path": "/Applications/Safari.app",
+      "displayName": "Safari"
+    }
+  }
+}

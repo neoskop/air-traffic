@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Air Traffic Trailer</title>
+<style>
+  :root {
+    --bg0: #04100f;
+    --bg1: #0c2523;
+    --mint: #8affd0;
+    --mint-soft: rgba(138, 255, 208, .16);
+    --ink: #f2fbf8;
+    --ink2: rgba(242, 251, 248, .62);
+    --sans: -apple-system, "SF Pro Display", "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg0); }
+  body { font-family: var(--sans); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  #stage { position: absolute; inset: 0; overflow: hidden;
+    background: radial-gradient(1200px 900px at 50% 45%, var(--bg1), var(--bg0) 70%); }
+
+  /* Radar-Hintergrund */
+  #radar { position: absolute; left: 50%; top: 50%; width: 2400px; height: 2400px;
+    margin: -1200px 0 0 -1200px; pointer-events: none; }
+  #radar .ring { position: absolute; left: 50%; top: 50%; border-radius: 50%;
+    border: 2px solid rgba(138, 255, 208, .055); transform: translate(-50%, -50%); }
+  #sweep { position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(from 0deg, rgba(138,255,208,.09), rgba(138,255,208,0) 50deg, transparent 360deg); }
+
+  .scene { position: absolute; inset: 0; opacity: 0; }
+  .abs { position: absolute; }
+
+  .eyebrow { font-size: 24px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--mint); }
+  .headline { font-size: 68px; font-weight: 700; line-height: 1.08; letter-spacing: -.02em; }
+  .sub { font-size: 30px; line-height: 1.35; color: var(--ink2); font-weight: 450; }
+
+  .win { border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,.12);
+    box-shadow: 0 40px 120px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.4); background: #1e1e1e; }
+  .win img { display: block; width: 100%; }
+
+  .mark { position: absolute; border: 3px solid var(--mint); border-radius: 14px;
+    box-shadow: 0 0 30px rgba(138,255,208,.35); opacity: 0; }
+
+  .url { font-family: var(--mono); font-size: 21px; padding: 16px 22px; border-radius: 14px; white-space: nowrap; }
+  .url.old { background: rgba(255,255,255,.06); color: var(--ink2); }
+  .url.new { background: var(--mint-soft); color: var(--mint); border: 1px solid rgba(138,255,208,.35); }
+
+  .key { width: 96px; height: 96px; border-radius: 20px; background: linear-gradient(#f4f7f6, #cfd8d5);
+    color: #10211f; font-size: 52px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 0 #8c9a96, 0 20px 40px rgba(0,0,0,.5); }
+
+  .term { border-radius: 18px; background: rgba(12, 20, 19, .96); border: 1px solid rgba(255,255,255,.14);
+    box-shadow: 0 40px 120px rgba(0,0,0,.65); font-family: var(--mono); font-size: 20px; line-height: 1.6; }
+  .term .bar { height: 44px; display: flex; align-items: center; gap: 9px; padding: 0 18px;
+    border-bottom: 1px solid rgba(255,255,255,.08); }
+  .term .bar i { width: 13px; height: 13px; border-radius: 50%; background: rgba(255,255,255,.18); }
+  .term .body { padding: 22px 28px 26px; white-space: pre; }
+  .term .p { color: var(--mint); }
+  .term .o { color: var(--ink2); opacity: 0; }
+  .term .o b { color: var(--ink); font-weight: 600; }
+  .term .o em { color: var(--mint); font-style: normal; }
+  .caret { display: inline-block; width: 11px; height: 22px; background: var(--mint); vertical-align: -4px; }
+
+  .chip { font-size: 24px; font-weight: 550; padding: 10px 20px; border-radius: 999px;
+    background: rgba(138,255,208,.1); color: var(--mint); border: 1px solid rgba(138,255,208,.25); opacity: 0; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="radar">
+    <div class="ring" style="width:600px;height:600px"></div>
+    <div class="ring" style="width:1100px;height:1100px"></div>
+    <div class="ring" style="width:1650px;height:1650px"></div>
+    <div class="ring" style="width:2300px;height:2300px"></div>
+    <div id="sweep"></div>
+  </div>
+
+  <!-- 1 · Hook -->
+  <div class="scene" id="s1">
+    <div class="abs" id="s1pulse1" style="left:960px;top:400px;width:300px;height:300px;margin:-150px;border-radius:50%;border:3px solid var(--mint)"></div>
+    <div class="abs" id="s1pulse2" style="left:960px;top:400px;width:300px;height:300px;margin:-150px;border-radius:50%;border:3px solid var(--mint)"></div>
+    <img class="abs" id="s1icon" src="../AppIcon-Radar/master-1024.png" style="left:810px;top:250px;width:300px;height:300px">
+    <div class="abs headline" id="s1a" style="left:0;width:1920px;top:620px;text-align:center;font-size:84px">Jeder Link.</div>
+    <div class="abs headline" id="s1b" style="left:0;width:1920px;top:718px;text-align:center;font-size:84px;color:var(--mint)">Der richtige Browser.</div>
+  </div>
+
+  <!-- 2+3 · Regeln & Umschreiben (gemeinsames Fenster) -->
+  <div class="scene" id="s23">
+    <div class="abs" id="rulesCam" style="left:800px;top:110px;width:1040px;transform-origin:0 0">
+      <div class="win" style="position:relative">
+        <img src="../../docs/images/rules-dark.png">
+        <div class="mark" id="markCond" style="left:38.3%;top:20.2%;width:59.6%;height:27.6%"></div>
+        <div class="mark" id="markOpen" style="left:38.3%;top:81.4%;width:59.6%;height:5.6%"></div>
+        <div class="abs" id="spot" style="left:38.6%;top:49.4%;width:59.2%;height:31.1%;border-radius:14px;
+             border:3px solid var(--mint);box-shadow:0 0 0 4000px rgba(4,16,15,.78), 0 0 40px rgba(138,255,208,.4);opacity:0"></div>
+      </div>
+    </div>
+    <div class="abs" id="leftShade" style="inset:0;opacity:0;background:linear-gradient(90deg, var(--bg0) 0, var(--bg0) 700px, rgba(4,16,15,0) 900px)"></div>
+    <div class="abs" id="t2" style="left:120px;top:330px;width:620px">
+      <div class="eyebrow">Regeln</div>
+      <div class="headline" style="margin-top:18px">Du bestimmst,<br>wo Links landen.</div>
+      <div class="sub" style="margin-top:26px">Nach Host, Pfad, Quell-App oder gedrückter Taste – die erste passende Regel gewinnt.</div>
+    </div>
+    <div class="abs" id="t3" style="left:120px;top:300px;width:640px">
+      <div class="eyebrow">Umschreiben</div>
+      <div class="headline" style="margin-top:18px">URLs umleiten,<br>bevor sie öffnen.</div>
+      <div class="url old abs" id="u1" style="top:300px;left:0">github.com/acme/webshop/pull/42/files?w=1</div>
+      <div class="abs" id="uArrow" style="top:372px;left:24px;font-size:40px;color:var(--mint)">↓</div>
+      <div class="url new abs" id="u2" style="top:432px;left:0">review.example.com/acme/webshop/42?w=1</div>
+    </div>
+  </div>
+
+  <!-- 4 · Auswahlfenster -->
+  <div class="scene" id="s4">
+    <div class="abs" id="t4" style="left:0;width:1920px;top:96px;text-align:center">
+      <div class="eyebrow">Auswahlfenster</div>
+      <div class="headline" style="margin-top:16px">Keine Regel? Eine Taste genügt.</div>
+    </div>
+    <div class="abs" id="chooser" style="left:400px;top:330px;width:1120px">
+      <div class="win" style="position:relative">
+        <img src="../../docs/images/chooser-dark.png">
+        <div class="mark" id="markChrome" style="left:26.0%;top:41.2%;width:14.9%;height:28.6%"></div>
+      </div>
+    </div>
+    <div class="abs key" id="key2" style="left:1560px;top:560px">2</div>
+  </div>
+
+  <!-- 5 · KI & CLI -->
+  <div class="scene" id="s5">
+    <div class="abs" id="t5" style="left:120px;top:320px;width:660px">
+      <div class="eyebrow">KI &amp; Automatisierung</div>
+      <div class="headline" style="margin-top:18px">Regex per KI.<br>Regeln per Terminal.</div>
+      <div class="sub" style="margin-top:26px">Mit eigenem MCP-Server für Claude Code, Codex &amp; Co.</div>
+    </div>
+    <div class="abs" id="assistant" style="left:1020px;top:90px;width:800px">
+      <div class="win"><img src="../../docs/images/assistant-dark.png"></div>
+    </div>
+    <div class="abs term" id="term" style="left:860px;top:520px;width:960px">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <div class="body"><span class="p">$ </span><span id="cmd"></span><span class="caret" id="caret"></span>
+<span class="o" id="o1">Greift:        <b>#1 Pull Requests im Review-Tool</b></span>
+<span class="o" id="o2">Ergebnis:      öffnen mit <b>Google Chrome</b></span>
+<span class="o" id="o3">Umgeschrieben: <em>https://review.example.com/acme/webshop/42?w=1</em></span></div>
+    </div>
+  </div>
+
+  <!-- 6 · Endcard -->
+  <div class="scene" id="s6">
+    <img class="abs" id="s6icon" src="../AppIcon-Radar/master-1024.png" style="left:850px;top:220px;width:220px;height:220px">
+    <div class="abs headline" id="s6t" style="left:0;width:1920px;top:470px;text-align:center;font-size:110px">Air Traffic</div>
+    <div class="abs sub" id="s6s" style="left:0;width:1920px;top:610px;text-align:center;font-size:38px">Der Browser-Verteiler für macOS</div>
+    <div class="abs" id="chips" style="left:0;width:1920px;top:720px;display:flex;justify-content:center;gap:16px">
+      <div class="chip">Regeln</div><div class="chip">Umschreiben</div><div class="chip">Auswahlfenster</div>
+      <div class="chip">KI-Assistent</div><div class="chip">Safari</div><div class="chip">CLI &amp; MCP</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DURATION = 15;
+const $ = id => document.getElementById(id);
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeIO = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const lerp = (a, b, x) => a + (b - a) * x;
+
+// Szenenfenster: [Start, Ende]; Ein- und Ausblenden je 0,35 s
+const SCENES = { s1: [0, 2.4], s23: [2.4, 7.6], s4: [7.6, 10.0], s5: [10.0, 12.4], s6: [12.4, 15.01] };
+const FADE = .35;
+function sceneAlpha(t, [a, b]) {
+  const fin = a === 0 ? 1 : prog(t, a, a + FADE);
+  const fout = b > DURATION ? 1 : 1 - prog(t, b - FADE, b);
+  return Math.min(fin, fout);
+}
+// Element-Einblendung: Fade + Hochgleiten
+function rise(el, t, start, dur = .5, dist = 30) {
+  const x = easeOut(prog(t, start, start + dur));
+  el.style.opacity = x;
+  el.style.transform = `translateY(${(1 - x) * dist}px)`;
+}
+
+const CMD = 'airtraffic check "https://github.com/acme/webshop/pull/42/files?w=1"';
+const S = 1040 / 1960; // Bildmaßstab des Regel-Fensters
+
+function seek(t) {
+  for (const [id, span] of Object.entries(SCENES)) $(id).style.opacity = sceneAlpha(t, span);
+  $('sweep').style.transform = `rotate(${t * 48}deg)`;
+
+  // 1 · Hook
+  const ic = easeOut(prog(t, 0, .8));
+  $('s1icon').style.opacity = ic;
+  $('s1icon').style.transform = `scale(${lerp(.55, 1, ic)})`;
+  [['s1pulse1', .35], ['s1pulse2', .85]].forEach(([id, st]) => {
+    const p = prog(t, st, st + 1.3);
+    $(id).style.transform = `scale(${lerp(.9, 3.2, easeOut(p))})`;
+    $(id).style.opacity = p > 0 && p < 1 ? (1 - p) * .55 : 0;
+  });
+  rise($('s1a'), t, .7, .55, 40);
+  rise($('s1b'), t, 1.1, .55, 40);
+
+  // 2+3 · Fenster: Einfahrt, dann Kamerafahrt auf „Umschreiben“
+  const win = easeOut(prog(t, 2.4, 3.1));
+  const zoom = easeIO(prog(t, 5.0, 5.9));
+  const z = lerp(1, 1.65, zoom);
+  const tx = lerp((1 - win) * 120, 1270 - 800 - 1.65 * 1330 * S, zoom);
+  const ty = lerp(0, 600 - 110 - 1.65 * 990 * S, zoom);
+  $('rulesCam').style.transform = `translate(${tx}px, ${ty}px) scale(${z})`;
+  $('rulesCam').style.opacity = win;
+  $('markCond').style.opacity = easeOut(prog(t, 3.3, 3.7)) * (1 - prog(t, 4.6, 4.9));
+  $('markOpen').style.opacity = easeOut(prog(t, 3.9, 4.3)) * (1 - prog(t, 4.6, 4.9));
+  $('spot').style.opacity = easeOut(prog(t, 5.4, 5.9));
+  $('leftShade').style.opacity = zoom;
+  // Texte 2 ↔ 3
+  rise($('t2'), t, 2.6, .55);
+  $('t2').style.opacity = Math.min(+$('t2').style.opacity, 1 - prog(t, 4.75, 5.05));
+  rise($('t3'), t, 5.15, .55);
+  rise($('u1'), t, 5.8, .45, 20);
+  rise($('uArrow'), t, 6.25, .35, -16);
+  rise($('u2'), t, 6.5, .5, 20);
+  $('u1').style.textDecoration = t > 6.5 ? 'line-through' : 'none';
+
+  // 4 · Auswahlfenster
+  rise($('t4'), t, 7.75, .5);
+  const ch = easeOut(prog(t, 7.7, 8.3));
+  $('chooser').style.opacity = ch;
+  $('chooser').style.transform = `scale(${lerp(.9, 1, ch)})`;
+  const k = prog(t, 8.55, 8.9);
+  const press = prog(t, 9.0, 9.12) - prog(t, 9.12, 9.3);
+  $('key2').style.opacity = easeOut(k);
+  $('key2').style.transform = `translateY(${(1 - easeOut(k)) * 40 + press * 8}px)`;
+  $('key2').style.boxShadow = `0 ${8 - press * 7}px 0 #8c9a96, 0 20px 40px rgba(0,0,0,.5)`;
+  const mc = prog(t, 9.05, 9.35);
+  $('markChrome').style.opacity = easeOut(mc);
+  $('markChrome').style.transform = `scale(${lerp(1.15, 1, easeOut(mc))})`;
+
+  // 5 · KI & CLI
+  rise($('t5'), t, 10.15, .55);
+  rise($('assistant'), t, 10.1, .6, 50);
+  rise($('term'), t, 10.35, .6, 60);
+  const n = Math.round(CMD.length * prog(t, 10.75, 11.45));
+  $('cmd').textContent = CMD.slice(0, n);
+  $('caret').style.opacity = n < CMD.length || Math.floor(t * 2.5) % 2 === 0 ? 1 : 0;
+  $('caret').style.display = t > 11.55 ? 'none' : 'inline-block';
+  ['o1', 'o2', 'o3'].forEach((id, i) => { $(id).style.opacity = prog(t, 11.6 + i * .15, 11.8 + i * .15); });
+
+  // 6 · Endcard
+  const e = easeOut(prog(t, 12.45, 13.1));
+  $('s6icon').style.opacity = e;
+  $('s6icon').style.transform = `scale(${lerp(.7, 1, e)}) rotate(${lerp(-12, 0, e)}deg)`;
+  rise($('s6t'), t, 12.7, .55, 40);
+  rise($('s6s'), t, 12.95, .55, 30);
+  [...$('chips').children].forEach((c, i) => rise(c, t, 13.25 + i * .07, .4, 20));}
+
+window.seek = seek;
+window.DURATION = DURATION;
+// Vorschau im Browser: läuft in Echtzeit in Schleife, außer ?t=<Sekunde> oder Render-Modus
+const params = new URLSearchParams(location.search);
+if (params.has('t')) seek(parseFloat(params.get('t')));
+else if (!params.has('render')) {
+  const t0 = performance.now();
+  (function loop(now) { seek(((now - t0) / 1000) % DURATION); requestAnimationFrame(loop); })(t0);
+} else seek(0);
+</script>
+</body>
+</html>
