@@ -376,8 +376,8 @@ struct AssistantCLITests {
         #expect(runner.calls.count == 1, "PATH wird zwischengespeichert")
         let call = try #require(runner.calls.first)
         #expect(call.invocation.executable.path == "/bin/zsh")
-        #expect(call.invocation.arguments.first == "-lc")
-        #expect(call.invocation.timeout == .seconds(3))
+        #expect(call.invocation.arguments.first == "-ilc")
+        #expect(call.invocation.timeout == .seconds(5))
         #expect(await shell.commandPath("rm -rf /") == nil, "nur einfache Namen")
     }
 
