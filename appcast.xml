@@ -6,6 +6,20 @@
     <description>Updates für Air Traffic</description>
     <language>de</language>
     <item>
+      <title>Version 1.0.1</title>
+      <pubDate>Fri, 06 Nov 2026 14:22:12 +0000</pubDate>
+      <sparkle:version>8</sparkle:version>
+      <sparkle:shortVersionString>1.0.1</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+<ul>
+<li>Fix: Der Hinweis „~/.local/bin ist nicht im PATH“ im Tab „CLI &amp; MCP“ erschien auch, wenn die Zeile in ~/.zshrc steht. Air Traffic liest den PATH jetzt wie ein Terminal.</li>
+<li>Dadurch werden auch Claude Code und Codex gefunden, wenn ihr Pfad nur in ~/.zshrc steht.</li>
+</ul>
+      ]]></description>
+      <enclosure url="https://github.com/neoskop/air-traffic/releases/download/v1.0.1/Air-Traffic-1.0.1.zip" length="7703126" type="application/octet-stream" sparkle:edSignature="1y1Ic59HKsQWP+hotpTo4nAgEphGB78xK9jITkfd3xnUU9WWbJ9vjI3k/TJ8g+yDll8069mr8uvkCXTE3ehiBQ=="/>
+    </item>
+    <item>
       <title>Version 1.0</title>
       <pubDate>Fri, 06 Nov 2026 14:01:54 +0000</pubDate>
       <sparkle:version>7</sparkle:version>
