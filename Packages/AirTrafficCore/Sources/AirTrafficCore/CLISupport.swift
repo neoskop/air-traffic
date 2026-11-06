@@ -293,11 +293,11 @@ private final class ProcessJob: @unchecked Sendable {
 
 // MARK: - Login-Shell
 
-/// Fragt die Login-Shell (`$SHELL -lc …`, Timeout 3 s). Ergebnis für `PATH` wird zwischengespeichert.
+/// Fragt die interaktive Login-Shell (`$SHELL -ilc …`, liest also auch `~/.zshrc` wie ein Terminal; Timeout 5 s). Ergebnis für `PATH` wird zwischengespeichert.
 public actor LoginShell {
     public static let shared = LoginShell()
 
-    public static let timeout: Duration = .seconds(3)
+    public static let timeout: Duration = .seconds(5)
     private static let marker = "__AIRTRAFFIC__"
 
     private let runner: any ProcessRunner
@@ -318,7 +318,7 @@ public actor LoginShell {
         let script = "printf '\(Self.marker)%s\(Self.marker)' \(expression)"
         let invocation = ProcessInvocation(
             executable: URL(fileURLWithPath: shellPath),
-            arguments: ["-lc", script],
+            arguments: ["-ilc", script],
             timeout: Self.timeout
         )
         guard let result = try? await runner.run(invocation), result.exitCode == 0 else { return nil }
