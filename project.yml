@@ -1,0 +1,118 @@
+name: AirTraffic
+options:
+  bundleIdPrefix: de.neoskop
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+  developmentLanguage: de
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "15.0"
+    # Gilt für App und Safari-Erweiterung (Versionen müssen gleich sein); scripts/release.sh setzt sie.
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "6"
+
+packages:
+  AirTrafficCore:
+    path: Packages/AirTrafficCore
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    exactVersion: 2.10.1
+
+targets:
+  AirTraffic:
+    type: application
+    platform: macOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+      - path: App/Info.plist
+        buildPhase: none
+    dependencies:
+      - package: AirTrafficCore
+      - package: Sparkle
+        product: Sparkle
+      - target: SafariExtension
+        embed: true
+      # Kommandozeilen-Tool + MCP-Server (SPEC §24), eingebettet unter Contents/Helpers/airtraffic.
+      - target: AirTrafficCLI
+        embed: true
+        copy:
+          destination: wrapper
+          subpath: Contents/Helpers
+      - sdk: SafariServices.framework
+    settings:
+      base:
+        PRODUCT_NAME: "Air Traffic"
+        PRODUCT_BUNDLE_IDENTIFIER: de.neoskop.AirTraffic
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_APP_SANDBOX: NO
+        SWIFT_STRICT_CONCURRENCY: complete
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        COMBINE_HIDPI_IMAGES: YES
+    scheme:
+      testTargets: []
+
+  # Safari-Web-Extension (SPEC §20.2), eingebettet unter Contents/PlugIns/SafariExtension.appex.
+  SafariExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: SafariExtension/Sources
+      # Flach in Contents/Resources (manifest.json, background.js, Icons).
+      - path: SafariExtension/Resources
+        buildPhase: resources
+      - path: SafariExtension/Info.plist
+        buildPhase: none
+      - path: SafariExtension/SafariExtension.entitlements
+        buildPhase: none
+      # Gemeinsamer Parser/Builder für airtraffic:// (nur Foundation, im Core getestet).
+      - path: Packages/AirTrafficCore/Sources/AirTrafficCore/AirTrafficURL.swift
+        group: SafariExtension/Shared
+    dependencies:
+      - sdk: SafariServices.framework
+    settings:
+      base:
+        PRODUCT_NAME: SafariExtension
+        PRODUCT_BUNDLE_IDENTIFIER: de.neoskop.AirTraffic.SafariExtension
+        INFOPLIST_FILE: SafariExtension/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: SafariExtension/SafariExtension.entitlements
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+        SWIFT_STRICT_CONCURRENCY: complete
+        SKIP_INSTALL: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks"
+
+  # Kommandozeile und MCP-Server für KI-Agenten (SPEC §24). Produkt `airtraffic`; der Target-Name
+  # weicht ab, weil „airtraffic“ und „AirTraffic“ auf APFS (ohne Groß/Klein) dieselben Build-Ordner wären.
+  AirTrafficCLI:
+    type: tool
+    platform: macOS
+    sources:
+      - path: CLI/Sources
+    dependencies:
+      - package: AirTrafficCore
+    settings:
+      base:
+        PRODUCT_NAME: airtraffic
+        PRODUCT_BUNDLE_IDENTIFIER: de.neoskop.AirTraffic.cli
+        # Info.plist im Binary: Version für `--version` und MCP-serverInfo, Kennung für die Signatur.
+        GENERATE_INFOPLIST_FILE: YES
+        CREATE_INFOPLIST_SECTION_IN_BINARY: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        DEVELOPMENT_TEAM: ""
+        ENABLE_HARDENED_RUNTIME: NO
+        SWIFT_STRICT_CONCURRENCY: complete
+        SKIP_INSTALL: YES

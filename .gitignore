@@ -1,0 +1,15 @@
+build/
+*.xcodeproj/
+DerivedData/
+.build/
+.swiftpm/
+.DS_Store
+xcuserdata/
+
+# Schlüssel und Zugangsdaten nie einchecken
+*.p12
+*.p8
+*.pem
+*.key
+.env
+.env.*
