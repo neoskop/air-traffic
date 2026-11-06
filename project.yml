@@ -12,7 +12,7 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "15.0"
     # Gilt für App und Safari-Erweiterung (Versionen müssen gleich sein); scripts/release.sh setzt sie.
     MARKETING_VERSION: "1.0"
-    CURRENT_PROJECT_VERSION: "6"
+    CURRENT_PROJECT_VERSION: "7"
 
 packages:
   AirTrafficCore:

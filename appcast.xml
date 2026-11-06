@@ -5,5 +5,22 @@
     <link>https://raw.githubusercontent.com/neoskop/air-traffic/main/appcast.xml</link>
     <description>Updates für Air Traffic</description>
     <language>de</language>
+    <item>
+      <title>Version 1.0</title>
+      <pubDate>Fri, 06 Nov 2026 14:01:54 +0000</pubDate>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+<ul>
+<li>Air Traffic 1.0 – erste Version im Repo neoskop/air-traffic.</li>
+<li>URL prüfen: welche Regel greift, welche verdeckt ist, woran die übrigen scheitern.</li>
+<li>Kommandozeile und MCP-Server für KI-Agenten; Änderungen an Umschreibungen oder Ziel-App wirken erst nach Freigabe in der App.</li>
+<li>Sicherheit: nur sichere URL-Schemata nach dem Umschreiben, Schutz vor hängenden Regeln, gefälschter Quell-App und Auswahlfenster-Spam.</li>
+<li>Stabiler und schneller: kein Absturz mehr durch abbrechende KI-CLI, Rückgängig (⌘Z) in der Regel-Liste, Umlaut-Domains in Host-Regeln, Regel-Tab deutlich schneller.</li>
+</ul>
+      ]]></description>
+      <enclosure url="https://github.com/neoskop/air-traffic/releases/download/v1.0/Air-Traffic-1.0.zip" length="7703136" type="application/octet-stream" sparkle:edSignature="bI7wGASFdlFjbmgsW0zu+5cK9l8JA3Fvvrg9R/qxuqEU/5LIdD/p/LFseUlB5djDAXZhooO187JnEuy7t2n8CA=="/>
+    </item>
   </channel>
 </rss>
