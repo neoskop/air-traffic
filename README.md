@@ -246,6 +246,19 @@ an. Commit und Push macht es nicht – es druckt die Befehle dafür. Erst mit de
 sehen installierte Apps das Update. `project.yml` und `appcast.xml` erst committen, wenn das Skript ohne
 Fehler durchgelaufen ist.
 
+Vor dem Build lässt das Skript die Tests laufen (`swift test`) und bricht bei einem Fehler ab; nach dem
+Build prüft es das fertige Kommandozeilen-Tool mit einer Mini-Konfiguration (Regel greift, Umschreibung
+stimmt, MCP-Server antwortet). Mit den Standardeinstellungen holen sich installierte Kopien ein Update
+binnen eines Tages von selbst – deshalb gibt es kein Release ohne grüne Tests.
+
+**Zertifikat:** Ohne `DEVELOPER_ID` signiert das Skript mit dem gültigen „Developer ID Application“-Zertifikat
+des Teams, das am längsten gilt, und warnt, wenn es in weniger als 60 Tagen abläuft.
+`scripts/release.sh --check-identity` zeigt Zertifikat und Ablaufdatum, ohne etwas zu bauen. Apples altes
+Zwischenzertifikat läuft am 1. Februar 2027 ab und mit ihm jedes daran hängende Developer-ID-Zertifikat
+([Meldung von Apple](https://developer.apple.com/news/?id=w4atic4c)). Den Nachfolger im Apple-Developer-Konto
+mit der Option „G2 Sub-CA“ ausstellen; solche Zertifikate gelten ein Jahr und müssen jährlich erneuert
+werden. Bereits veröffentlichte, notarisierte Versionen laufen weiter.
+
 ## Sicherheit
 
 ![Regel wartet auf Freigabe](docs/images/rules-pending-light.png)

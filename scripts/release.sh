@@ -2,8 +2,10 @@
 # Release von Air Traffic.
 #
 #   scripts/release.sh <version> [--notes "<Text>"] [--dry-run] [--no-sign]
+#   scripts/release.sh --check-identity
 #
-# Ablauf: Versionen setzen (Build +1) → xcodegen → Release-Build → Developer-ID-Signatur
+# Ablauf: Tests → Versionen setzen (Build +1) → xcodegen → Release-Build → Rauchtest des
+# Kommandozeilen-Tools → Developer-ID-Signatur
 # (inkl. Safari-Erweiterung und Kommandozeilen-Tool) →
 # Notarisierung + Staple → ZIP → Sparkle-Signatur
 # (sign_update --account air-traffic, Schlüssel aus dem Schlüsselbund) → appcast.xml ergänzen →
@@ -13,6 +15,7 @@
 #   --dry-run         Nur bauen und signieren: project.yml und appcast.xml bleiben unverändert,
 #                     kein GitHub-Release. Vorschau des Appcasts nach build/dist/appcast.dry-run.xml.
 #   --no-sign         Nur mit --dry-run: ohne Developer-ID, Notarisierung und Sparkle-Signatur.
+#   --check-identity  Nur zeigen, mit welchem Developer-ID-Zertifikat signiert würde und bis wann es gilt.
 #
 # Voraussetzungen: Developer-ID-Zertifikat im Schlüsselbund (DEVELOPER_ID), notarytool-Profil
 # „air-traffic“ (NOTARY_PROFILE), Sparkle-Schlüssel im Schlüsselbund (Account air-traffic).
@@ -24,8 +27,10 @@ SPARKLE_URL="https://github.com/sparkle-project/Sparkle/releases/download/${SPAR
 SIGNING_ACCOUNT="air-traffic"
 REPO_SLUG="neoskop/air-traffic"
 MIN_SYSTEM_VERSION="15.0"
-# Developer ID Application: Neoskop GmbH (PVW9KTQ7MR) – SHA-1, weil der Name im Schlüsselbund doppelt vorkommt.
-DEVELOPER_ID="${DEVELOPER_ID:-EF3BF4DE692DB8951ABA392B739551F17A7186D2}"
+# Developer ID Application: Neoskop GmbH (PVW9KTQ7MR). Ohne Vorgabe nimmt das Skript die gültige Identität
+# des Teams mit dem spätesten Ablaufdatum (der Name kann im Schlüsselbund mehrfach vorkommen);
+# DEVELOPER_ID=<SHA-1> erzwingt eine bestimmte.
+DEVELOPER_ID="${DEVELOPER_ID:-}"
 TEAM_ID="PVW9KTQ7MR"
 # Zugangsdaten für notarytool (xcrun notarytool store-credentials air-traffic …).
 NOTARY_PROFILE="${NOTARY_PROFILE:-air-traffic}"
@@ -38,8 +43,55 @@ die() { echo "Fehler: $*" >&2; exit 1; }
 step() { printf '\n▸ %s\n' "$*"; }
 
 usage() {
-  sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
+  sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
   exit "${1:-0}"
+}
+
+# SHA-1 aller gültigen „Developer ID Application“-Identitäten des Teams, eine je Zeile.
+developer_id_candidates() {
+  security find-identity -v -p codesigning \
+    | sed -nE "s/^ *[0-9]+\) ([A-F0-9]{40}) \"Developer ID Application: .*\($1\)\"$/\1/p"
+}
+
+# Ablauf des Zertifikats mit diesem SHA-1 als Unix-Zeit; 0, wenn nicht ermittelbar.
+developer_id_expiry() {
+  local pem end
+  pem="$(security find-certificate -a -Z -p -c "Developer ID Application" 2>/dev/null \
+    | awk -v want="$1" '
+        /^SHA-1 hash:/ { keep = ($3 == want) }
+        keep && /BEGIN CERTIFICATE/ { on = 1 }
+        on { print }
+        on && /END CERTIFICATE/ { exit }
+      ')"
+  [[ -n "$pem" ]] || { echo 0; return 0; }
+  end="$(openssl x509 -noout -enddate <<<"$pem" 2>/dev/null | sed 's/^notAfter=//')"
+  LC_ALL=C date -j -u -f '%b %e %T %Y %Z' "$end" '+%s' 2>/dev/null || echo 0
+}
+
+# Legt DEVELOPER_ID fest, falls nicht vorgegeben: die gültige Identität des Teams mit dem spätesten
+# Ablaufdatum. Zeigt das Ablaufdatum und warnt, wenn weniger als 60 Tage bleiben.
+resolve_developer_id() {
+  local sha end best="" best_end=0 days
+  if [[ -z "$DEVELOPER_ID" ]]; then
+    while read -r sha; do
+      [[ -n "$sha" ]] || continue
+      end="$(developer_id_expiry "$sha")"
+      # Der erste Kandidat zählt immer – auch wenn sich sein Ablaufdatum nicht ermitteln lässt.
+      if [[ -z "$best" ]] || (( end > best_end )); then best_end=$end; best=$sha; fi
+    done < <(developer_id_candidates "$TEAM_ID")
+    [[ -n "$best" ]] || die "Kein gültiges „Developer ID Application“-Zertifikat für Team $TEAM_ID im Schlüsselbund (abgelaufen? Siehe README, Abschnitt „Release“)"
+    DEVELOPER_ID="$best"
+  fi
+  end="$(developer_id_expiry "$DEVELOPER_ID")"
+  if (( end == 0 )); then
+    echo "Developer ID: $DEVELOPER_ID (Ablaufdatum nicht ermittelbar)"
+    return 0
+  fi
+  days=$(( (end - $(date '+%s')) / 86400 ))
+  echo "Developer ID: $DEVELOPER_ID, gültig bis $(LC_ALL=C date -u -r "$end" '+%Y-%m-%d') ($days Tage)"
+  if (( days < 60 )); then
+    echo "Warnung: Das Developer-ID-Zertifikat läuft in $days Tagen ab – rechtzeitig erneuern (README, Abschnitt „Release“)." >&2
+  fi
 }
 
 # --- Argumente ---------------------------------------------------------------
@@ -47,22 +99,28 @@ VERSION=""
 NOTES=""
 DRY_RUN=0
 NO_SIGN=0
+CHECK_IDENTITY=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --notes) [[ $# -ge 2 ]] || die "--notes braucht einen Text"; NOTES="$2"; shift 2 ;;
     --dry-run) DRY_RUN=1; shift ;;
     --no-sign) NO_SIGN=1; shift ;;
+    --check-identity) CHECK_IDENTITY=1; shift ;;
     -h|--help) usage 0 ;;
     -*) die "Unbekannte Option $1" ;;
     *) [[ -z "$VERSION" ]] || die "Nur eine Version angeben"; VERSION="$1"; shift ;;
   esac
 done
+if [[ $CHECK_IDENTITY -eq 1 ]]; then
+  resolve_developer_id
+  exit 0
+fi
 [[ -n "$VERSION" ]] || usage 64
 [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]] || die "Version „$VERSION“ hat nicht die Form 1.4 oder 1.4.2"
 if [[ $NO_SIGN -eq 1 && $DRY_RUN -eq 0 ]]; then die "--no-sign nur zusammen mit --dry-run"; fi
 
 # --- Voraussetzungen -----------------------------------------------------------
-for tool in xcodegen xcodebuild ditto codesign plutil; do
+for tool in swift xcodegen xcodebuild ditto codesign plutil; do
   command -v "$tool" >/dev/null || die "$tool fehlt"
 done
 if [[ $DRY_RUN -eq 0 ]]; then
@@ -73,6 +131,8 @@ if [[ $DRY_RUN -eq 0 ]]; then
   fi
   if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null; then die "Tag v$VERSION existiert schon"; fi
 fi
+# Zertifikat früh festlegen und prüfen, nicht erst nach dem Build.
+if [[ $NO_SIGN -eq 0 ]]; then resolve_developer_id; fi
 
 APPCAST="$ROOT/appcast.xml"
 if [[ -f "$APPCAST" ]] && grep -q "<sparkle:shortVersionString>$VERSION</sparkle:shortVersionString>" "$APPCAST"; then
@@ -91,6 +151,17 @@ if [[ -z "${NOTES//[[:space:]]/}" ]]; then
   [[ $DRY_RUN -eq 1 ]] || die "Keine Release-Notes: --notes angeben oder Abschnitt „## $VERSION“ in CHANGELOG.md anlegen"
   NOTES="- Air Traffic $VERSION"
 fi
+
+# --- Tests --------------------------------------------------------------------
+# Mit den Standardeinstellungen holen sich installierte Kopien ein Update binnen eines Tages von
+# selbst (Sparkle) – vorher müssen die Tests grün sein.
+step "Tests (swift test, Log: build/release-tests.log)"
+mkdir -p "$ROOT/build"
+if ! swift test --package-path Packages/AirTrafficCore >"$ROOT/build/release-tests.log" 2>&1; then
+  tail -30 "$ROOT/build/release-tests.log" >&2
+  die "Tests fehlgeschlagen – kein Release"
+fi
+grep -E 'Test run with' "$ROOT/build/release-tests.log" | tail -1 || true
 
 # --- Versionen ----------------------------------------------------------------
 CURRENT_BUILD="$(sed -nE 's/^[[:space:]]*CURRENT_PROJECT_VERSION:[[:space:]]*"?([0-9]+)"?.*/\1/p' project.yml | head -1)"
@@ -157,6 +228,37 @@ HELPER="$APP/Contents/Helpers/airtraffic"
 HELPER_VERSION="$(AIRTRAFFIC_CONFIG_PATH=/dev/null "$HELPER" --version 2>&1)" || die "Kommandozeilen-Tool startet nicht: $HELPER_VERSION"
 [[ "$HELPER_VERSION" == "airtraffic $VERSION ($BUILD)" ]] \
   || die "Version des Kommandozeilen-Tools passt nicht: $HELPER_VERSION"
+# Rauchtest des fertig gebauten Kommandozeilen-Tools mit einer eigenen Mini-Konfiguration: Regel greift,
+# Umschreibung stimmt, MCP-Server antwortet. Liest nur; die echte Konfiguration bleibt unberührt.
+SMOKE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/airtraffic-smoke.XXXXXX")"
+cat >"$SMOKE_DIR/config.json" <<'EOF'
+{
+  "schemaVersion": 1,
+  "browsers": [],
+  "defaultAction": {"type": "prompt", "scope": "all"},
+  "rules": [
+    {
+      "id": "00000000-0000-4000-8000-0000000000aa",
+      "name": "Smoke",
+      "conditions": [{"type": "host", "op": "equals", "value": "smoke.example"}],
+      "rewrites": [{"pattern": "^https://smoke\\.example/(.*)$", "template": "https://ok.example/$1"}],
+      "action": {"type": "prompt", "scope": "all"}
+    }
+  ]
+}
+EOF
+SMOKE_JSON="$(AIRTRAFFIC_CONFIG_PATH="$SMOKE_DIR/config.json" "$HELPER" check "https://smoke.example/a?b=1" --json 2>&1)" \
+  || die "Rauchtest: airtraffic check schlägt fehl: $SMOKE_JSON"
+SMOKE_URL="$(plutil -extract decision.finalURL raw - <<<"$SMOKE_JSON" 2>/dev/null || echo "?")"
+[[ "$SMOKE_URL" == "https://ok.example/a?b=1" ]] \
+  || die "Rauchtest: Umschreibung ergibt „$SMOKE_URL“ statt https://ok.example/a?b=1"
+SMOKE_MCP="$(printf '%s\n' \
+  '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"release-smoke","version":"0"}}}' \
+  '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
+  | AIRTRAFFIC_CONFIG_PATH="$SMOKE_DIR/config.json" "$HELPER" mcp 2>/dev/null)" \
+  || die "Rauchtest: airtraffic mcp schlägt fehl"
+grep -q '"check_url"' <<<"$SMOKE_MCP" || die "Rauchtest: MCP-Server nennt das Tool check_url nicht"
+rm -rf "$SMOKE_DIR"
 check_helper() {
   codesign --verify --strict "$HELPER" || die "Signatur des Kommandozeilen-Tools ungültig"
 }
