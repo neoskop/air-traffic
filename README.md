@@ -196,6 +196,12 @@ swift test --package-path Packages/AirTrafficCore
 
 Die Tests laufen ohne Netzwerk und ohne echte KI-Aufrufe (Fake-Clients und Fake-Prozesse).
 
+`scripts/verify.sh` prüft alles auf einmal: die Tests und danach den Debug-Build von App, Safari-Erweiterung
+und Kommandozeilen-Tool. Die gebaute Kopie meldet das Skript wieder bei macOS ab und löscht sie
+(siehe „Safari-Erweiterung beim Entwickeln“); `scripts/verify.sh --core` lässt nur die Tests laufen.
+Dasselbe prüft die GitHub-Action `.github/workflows/ci.yml` bei jedem Push auf `main` und in jedem
+Pull Request. Hinweise für KI-Agenten und Mitwirkende stehen in [`AGENTS.md`](AGENTS.md).
+
 ## Debug-Schalter
 
 Nur im **Debug-Build** – der Release-Build kennt sie nicht und startet mit ihnen ganz normal. Alle Schalter
