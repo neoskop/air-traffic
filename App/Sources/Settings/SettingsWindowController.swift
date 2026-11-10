@@ -109,7 +109,12 @@ final class SettingsTabViewController: NSTabViewController {
 
     private func add(_ view: some View, tab: SettingsTab) {
         let root = view
-            .safeAreaInset(edge: .top, spacing: 0) { ExternalChangeBanner(model: model) }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(spacing: 0) {
+                    ProblemBanner(model: model)
+                    ExternalChangeBanner(model: model)
+                }
+            }
             .frame(
             minWidth: SettingsWindowController.minSize.width,
             maxWidth: .infinity,
@@ -154,6 +159,26 @@ final class SettingsTabViewController: NSTabViewController {
     }
 }
 
+
+/// Zeile oben im Einstellungsfenster bei Lade- oder Speicherfehlern. Auf jedem Tab sichtbar:
+/// Regeln werden im Tab „Regeln“ bearbeitet, dort muss stehen, dass nichts gespeichert wird.
+struct ProblemBanner: View {
+    let model: AppModel
+
+    var body: some View {
+        if let problem = model.problem {
+            Label(problem, systemImage: "exclamationmark.triangle.fill")
+                .font(DS.help)
+                .foregroundStyle(DS.orange)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(DS.orange.opacity(DS.tint))
+        }
+    }
+}
 
 /// Orange Zeile oben im Einstellungsfenster, wenn die Regeln von außen geändert wurden.
 /// Verschwindet nach 6 s oder bei Klick.

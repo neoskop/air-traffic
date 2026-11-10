@@ -11,14 +11,6 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         SettingsPage {
-            if let problem = model.problem {
-                Label(problem, systemImage: "exclamationmark.triangle.fill")
-                    .font(DS.help)
-                    .foregroundStyle(DS.orange)
-                    .textSelection(.enabled)
-                    .tintedRow(DS.orange)
-            }
-
             statusCard
 
             VStack(alignment: .leading, spacing: 6) {

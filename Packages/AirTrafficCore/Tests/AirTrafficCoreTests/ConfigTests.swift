@@ -96,6 +96,29 @@ struct ConfigTests {
         #expect(throws: ConfigStore.StoreError.unsupportedSchemaVersion(2)) { try ConfigStore.decode(Data(future.utf8)) }
     }
 
+    @Test func futureSchemaWinsOverUnknownValues() {
+        // Eine neuere Version darf Werte schreiben, die dieser Stand nicht kennt.
+        let future = #"{"schemaVersion":2,"rules":[{"name":"x","action":{"type":"teleport"}}],"defaultAction":{"type":"prompt"}}"#
+        #expect(throws: ConfigStore.StoreError.unsupportedSchemaVersion(2)) { try ConfigStore.decode(Data(future.utf8)) }
+    }
+
+    @Test func loadFailureClassification() {
+        func failure(_ json: String) -> ConfigStore.LoadFailure? {
+            do {
+                _ = try ConfigStore.decode(Data(json.utf8))
+                return nil
+            } catch {
+                return ConfigStore.loadFailure(for: error)
+            }
+        }
+        #expect(failure(#"{"schemaVersion":3,"defaultAction":{"type":"teleport"}}"#) == .newerSchema(3))
+        #expect(failure("{") == .corrupt)
+        #expect(failure(#"{"schemaVersion":1,"defaultAction":{"type":"teleport"}}"#) == .corrupt)
+        #expect(failure(#"{"browsers":[]}"#) == .corrupt, "schemaVersion fehlt")
+        #expect(failure(#"{"schemaVersion":1}"#) == nil)
+        #expect(ConfigStore.loadFailure(for: CocoaError(.fileReadNoPermission)) == .unreadable)
+    }
+
     @Test func decisionJSON() throws {
         let d = Decision(
             originalURL: URL(string: "https://example.com")!,

@@ -68,11 +68,38 @@ public struct ConfigStore: Sendable {
     }
 
     public static func decode(_ data: Data) throws -> Config {
+        // Schema-Version zuerst: Eine Datei aus einer neueren Version kann Werte enthalten, die dieser
+        // Stand nicht dekodieren kann. Das ist dann „neuere Version“, nicht „defekt“.
+        if let version = (try? JSONDecoder().decode(SchemaProbe.self, from: data))?.schemaVersion,
+           version > Config.currentSchemaVersion {
+            throw StoreError.unsupportedSchemaVersion(version)
+        }
         let config = try JSONDecoder().decode(Config.self, from: data)
         guard config.schemaVersion <= Config.currentSchemaVersion else {
             throw StoreError.unsupportedSchemaVersion(config.schemaVersion)
         }
         return config
+    }
+
+    private struct SchemaProbe: Decodable {
+        var schemaVersion: Int?
+    }
+
+    /// Warum sich eine vorhandene Konfigurationsdatei nicht laden ließ – davon hängt ab, ob die App
+    /// sie anfassen darf.
+    public enum LoadFailure: Sendable, Equatable {
+        /// Aus einer neueren Version: nicht verschieben, nicht überschreiben.
+        case newerSchema(Int)
+        /// Kein gültiges Konfigurations-JSON: beiseitelegen und neu beginnen.
+        case corrupt
+        /// Nicht lesbar (Rechte, Koordination, E/A): nicht verschieben, nicht überschreiben.
+        case unreadable
+    }
+
+    public static func loadFailure(for error: any Error) -> LoadFailure {
+        if case StoreError.unsupportedSchemaVersion(let version) = error { return .newerSchema(version) }
+        if error is DecodingError { return .corrupt }
+        return .unreadable
     }
 
     public static func makeEncoder() -> JSONEncoder {

@@ -132,6 +132,10 @@ final class AppModel {
 
     @ObservationIgnored private var saveTask: Task<Void, Never>?
 
+    /// Die Datei ließ sich beim Start nicht laden und darf nicht überschrieben werden (neuere Version,
+    /// nicht lesbar): Es wird nichts gespeichert, bis ein Stand von der Platte übernommen wurde.
+    @ObservationIgnored private(set) var isReadOnly = false
+
     init(
         store: ConfigStore,
         keyStore: any APIKeyStore = KeychainAPIKeyStore(),
@@ -158,14 +162,28 @@ final class AppModel {
             config = AppModel.firstRunConfig()
             problem = "Konfiguration war nicht lesbar (\(error.localizedDescription))."
         } catch {
-            // Defekte Datei sichern statt überschreiben.
-            let backup = store.fileURL.deletingPathExtension()
-                .appendingPathExtension("broken-\(Int(Date().timeIntervalSince1970)).json")
-            try? FileManager.default.moveItem(at: store.fileURL, to: backup)
-            config = AppModel.firstRunConfig()
-            problem = "Konfiguration war nicht lesbar (\(error.localizedDescription)). Gesichert als \(backup.lastPathComponent)."
             Log.config.error("Konfiguration nicht lesbar: \(String(describing: error), privacy: .private)")
-            saveNow()
+            config = AppModel.firstRunConfig()
+            switch ConfigStore.loadFailure(for: error) {
+            case .corrupt:
+                // Defekte Datei sichern statt überschreiben.
+                let backup = store.fileURL.deletingPathExtension()
+                    .appendingPathExtension("broken-\(Int(Date().timeIntervalSince1970)).json")
+                do {
+                    try FileManager.default.moveItem(at: store.fileURL, to: backup)
+                    problem = "Konfiguration war nicht lesbar (\(error.localizedDescription)). Gesichert als \(backup.lastPathComponent); Air Traffic startet ohne Regeln."
+                    saveNow()
+                } catch let moveError {
+                    isReadOnly = true
+                    problem = "Konfiguration ist nicht lesbar (\(error.localizedDescription)) und ließ sich nicht sichern (\(moveError.localizedDescription)). Es gelten keine Regeln, und Änderungen werden nicht gespeichert."
+                }
+            case .newerSchema(let version):
+                isReadOnly = true
+                problem = "Konfiguration stammt von einer neueren Air-Traffic-Version (Schema \(version)). Bitte Air Traffic aktualisieren. Bis dahin gelten keine Regeln, und Änderungen werden nicht gespeichert."
+            case .unreadable:
+                isReadOnly = true
+                problem = "Konfiguration konnte nicht gelesen werden (\(error.localizedDescription)). Es gelten keine Regeln, und Änderungen werden nicht gespeichert."
+            }
         }
         refreshAssistantKey()
         if persists {
@@ -302,7 +320,7 @@ final class AppModel {
     }
 
     private func backupBeforeDelete() {
-        guard persists else { return }
+        guard persists, !isReadOnly else { return }
         do {
             try store.writeBackup(of: config)
         } catch {
@@ -313,7 +331,7 @@ final class AppModel {
     // MARK: Speichern
 
     private func scheduleSave() {
-        guard persists else { return }
+        guard persists, !isReadOnly else { return }
         saveTask?.cancel()
         saveTask = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(300))
@@ -332,7 +350,7 @@ final class AppModel {
     /// überschrieben, sondern neu geladen.
     private func saveNow() {
         saveTask = nil
-        guard persists else { return }
+        guard persists, !isReadOnly else { return }
         do {
             switch try store.save(config, ifUnchangedSince: knownFingerprint) {
             case .saved(let fingerprint):
@@ -343,6 +361,7 @@ final class AppModel {
                 applyExternal(current)
             case .conflictUnreadable(let message):
                 problem = "Von außen geändert, aber nicht lesbar (\(message)) – deine Änderung wurde nicht gespeichert."
+                Log.config.error("Speichern übersprungen: Datei von außen geändert und nicht lesbar")
             }
         } catch {
             problem = "Speichern fehlgeschlagen: \(error.localizedDescription)"
@@ -366,7 +385,7 @@ final class AppModel {
               let data
         else { return }
         do {
-            applyExternal(ConfigSnapshot(config: try ConfigStore.decode(data), fingerprint: ConfigStore.fingerprint(data)))
+            applyExternal(try ConfigSnapshot(data: data))
         } catch {
             // Nicht übernehmen und nicht überschreiben: Speichern meldet den Konflikt, bis die Datei wieder gültig ist.
             problem = "Von außen geändert, aber nicht lesbar (\(error.localizedDescription))."
@@ -385,6 +404,11 @@ final class AppModel {
         isApplyingExternalChange = false
         if let id = selectedRuleID, ruleIndex(id) == nil { selectedRuleID = nil }
         if problem?.hasPrefix("Von außen") == true { problem = nil }
+        // Ein lesbarer Stand von der Platte beendet den Nur-Lese-Zustand nach einem Ladefehler.
+        if isReadOnly {
+            isReadOnly = false
+            problem = nil
+        }
         externalReloadCount += 1
         // Editor nur neu aufbauen, wenn sich die ausgewählte Regel geändert hat.
         if rule(withID: selectedRuleID) != selectedBefore { editorResetCount += 1 }
