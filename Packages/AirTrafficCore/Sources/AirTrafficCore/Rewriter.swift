@@ -98,6 +98,39 @@ public enum Rewriter {
         }
     }
 
+    /// Erster Treffer eines Musters für die Vorschau im Regel-Editor.
+    public enum PreviewMatch: Sendable, Equatable {
+        /// Muster trifft; `groups` = Inhalt von `$1 …` (leer für eine Gruppe, die nicht teilnimmt).
+        case match(groups: [String])
+        case noMatch
+        /// Zeitbudget überschritten – keine Vorschau.
+        case timeout
+        case invalidPattern
+    }
+
+    /// Erster Treffer von `rewrite.pattern` in `input`, mit Regex aus dem Cache und Zeitbudget.
+    /// Die App-Schicht ruft `NSRegularExpression` nie selbst auf: ein Abgleich ohne Budget im
+    /// SwiftUI-`body` kann bei katastrophalem Backtracking den Main-Thread einfrieren.
+    public static func previewMatch(
+        for rewrite: Rewrite, in input: String, budget: MatchBudget = MatchBudget(MatchLimits.previewBudget)
+    ) -> PreviewMatch {
+        let regex: NSRegularExpression
+        do {
+            regex = try self.regex(for: rewrite)
+        } catch {
+            return .invalidPattern
+        }
+        do {
+            guard let match = try regex.firstMatch(in: input, budget: budget) else { return .noMatch }
+            guard match.numberOfRanges > 1 else { return .match(groups: []) }
+            return .match(groups: (1..<match.numberOfRanges).map { index in
+                Range(match.range(at: index), in: input).map { String(input[$0]) } ?? ""
+            })
+        } catch {
+            return .timeout
+        }
+    }
+
     /// Gültig = strikt parsbar (ohne automatisches Kodieren ungültiger Zeichen) und mit Schema.
     public static func validURL(_ string: String) -> URL? {
         guard let url = URL(string: string, encodingInvalidCharacters: false),

@@ -9,6 +9,8 @@ public enum MatchLimits {
     public static let maxURLLength = 8192
     /// Gesamtbudget für alle regulären Ausdrücke eines Links.
     public static let regexBudget: Duration = .milliseconds(500)
+    /// Budget je Umschreibung für die Treffer-Vorschau im Regel-Editor (läuft im SwiftUI-`body`).
+    public static let previewBudget: Duration = .milliseconds(100)
 
     public static let tooLongWarning = "Link zu lang für Regeln"
 

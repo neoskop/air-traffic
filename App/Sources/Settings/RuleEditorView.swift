@@ -959,9 +959,8 @@ private struct RewriteRow: View {
     let onAssist: () -> Void
 
     var body: some View {
-        // Fehler und Regex einmal je Render; der Regex kommt aus dem Cache des Core.
+        // Fehler einmal je Render; der Abgleich für die Vorschau läuft im Core (Cache und Zeitbudget).
         let error = Rewriter.validationError(for: rewrite)
-        let regex = error == nil ? Self.regex(for: rewrite) : nil
         VStack(alignment: .leading, spacing: 0) {
             if let number {
                 HStack(spacing: 6) {
@@ -991,7 +990,7 @@ private struct RewriteRow: View {
                 Color.clear.frame(width: 24 + 22 + 22 + 16, height: 1)
             }
             .padding(.vertical, 5)
-            preview(error: error, regex: regex)
+            preview(error: error)
         }
     }
 
@@ -999,7 +998,7 @@ private struct RewriteRow: View {
         Text(text).font(DS.small).foregroundStyle(.secondary).frame(width: 52, alignment: .leading)
     }
 
-    @ViewBuilder private func preview(error: String?, regex: NSRegularExpression?) -> some View {
+    @ViewBuilder private func preview(error: String?) -> some View {
         Group {
             if let error {
                 Text("Ungültiger regulärer Ausdruck: \(error)")
@@ -1007,14 +1006,18 @@ private struct RewriteRow: View {
                     .foregroundStyle(DS.red)
                     .textSelection(.enabled)
             } else if let step {
-                let match = regex?.firstMatch(in: step.input, range: NSRange(step.input.startIndex..., in: step.input))
-                if match == nil {
+                switch Rewriter.previewMatch(for: rewrite, in: step.input) {
+                case .noMatch, .invalidPattern:
                     Text("Muster trifft nicht – URL bleibt unverändert")
                         .font(DS.small)
                         .foregroundStyle(.secondary)
-                } else {
+                case .timeout:
+                    Text("Zeitlimit überschritten – keine Vorschau für dieses Muster")
+                        .font(DS.small)
+                        .foregroundStyle(DS.red)
+                case .match(let groups):
                     VStack(alignment: .leading, spacing: 6) {
-                        groupLegend(captureGroups(match, in: step.input))
+                        groupLegend(groups)
                         resultBlock(step)
                         if Rewriter.validURL(step.output) == nil {
                             Text("Ergebnis ist keine gültige URL – es würde die Original-URL verwendet.")
@@ -1048,17 +1051,6 @@ private struct RewriteRow: View {
                 }
             }
             .accessibilityElement(children: .combine)
-        }
-    }
-
-    private static func regex(for rewrite: Rewrite) -> NSRegularExpression? {
-        try? NSRegularExpression(pattern: rewrite.pattern, options: rewrite.caseSensitive ? [] : [.caseInsensitive])
-    }
-
-    private func captureGroups(_ match: NSTextCheckingResult?, in input: String) -> [String] {
-        guard let match, match.numberOfRanges > 1 else { return [] }
-        return (1..<match.numberOfRanges).map { i in
-            Range(match.range(at: i), in: input).map { String(input[$0]) } ?? ""
         }
     }
 

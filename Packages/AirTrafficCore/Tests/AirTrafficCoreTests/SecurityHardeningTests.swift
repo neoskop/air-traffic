@@ -393,6 +393,23 @@ struct MatchSafetyTests {
         #expect(RuleEngine.decide(url: short, context: LinkContext(), config: config).action == .open(FakeAppResolver.chrome))
     }
 
+    @Test func previewMatchReturnsGroupsAndStopsAtBudget() {
+        let rewrite = Rewrite(pattern: "^https://github\\.com/([^/]+)/([^/]+)/pull/(\\d+)", template: "https://review.example.com/$1/$2/$3")
+        #expect(Rewriter.previewMatch(for: rewrite, in: "https://github.com/acme/webshop/pull/42") == .match(groups: ["acme", "webshop", "42"]))
+        #expect(Rewriter.previewMatch(for: rewrite, in: "https://example.com/") == .noMatch)
+        #expect(Rewriter.previewMatch(for: Rewrite(pattern: "example", template: ""), in: "https://example.com/") == .match(groups: []))
+        #expect(Rewriter.previewMatch(for: Rewrite(pattern: "(a)|(b)", template: ""), in: "b") == .match(groups: ["", "b"]))
+        #expect(Rewriter.previewMatch(for: Rewrite(pattern: "(", template: ""), in: "x") == .invalidPattern)
+
+        // Katastrophales Backtracking endet am Budget, statt den Aufrufer (SwiftUI-`body`) zu blockieren.
+        let evil = Rewrite(pattern: "^https://example\\.com/(a|aa)+$", template: "https://x.example/")
+        let input = "https://example.com/" + String(repeating: "a", count: 5_000) + "b"
+        var result: Rewriter.PreviewMatch?
+        let time = Self.elapsed { result = Rewriter.previewMatch(for: evil, in: input) }
+        #expect(result == .timeout)
+        #expect(time < .seconds(1), "Dauer \(time)")
+    }
+
     @Test func regexCacheReturnsSameInstance() throws {
         // Eigene Instanz statt des globalen Caches, den parallele Tests füllen.
         let cache = RegexCache(limit: RegexCache.defaultLimit)
