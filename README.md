@@ -272,6 +272,8 @@ werden. Bereits veröffentlichte, notarisierte Versionen laufen weiter.
   außen erscheint eine Mitteilung „Regeln von außen geändert“; ohne Mitteilungs-Berechtigung bleibt die orange
   Zeile im Einstellungsfenster.
 - **Ziel sichtbar:** Kurzbeschreibungen zeigen bei Umschreibungen das Ziel (z. B. „↻ review.example.com“).
+  Steht der Host in der Vorlage nicht vollständig fest, endet er auf „…“; folgen weitere Umschreibungen,
+  steht „+1 Schritt“ dahinter – beides heißt: Das Ziel kann sich noch ändern.
 - **Schema-Regel:** Nach dem Umschreiben ist nur `http`/`https` erlaubt, das Schema der Original-URL oder ein
   Schema, das literal am Anfang der Vorlage steht (`linear://…`). Ein Schema aus der URL selbst (`?u=file:///…`
   über `$1`) wird verworfen – dann gilt die Original-URL mit Warnung. `file:` öffnet Air Traffic nur, wenn der

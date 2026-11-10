@@ -215,6 +215,14 @@ struct ApprovalTests {
         ("linear://review/$1", "linear://review"),
         ("$1", nil),
         ("http://localhost:8080/x?$1", "localhost:8080"),
+        // Host endet nicht im literalen Teil: Das Ziel steht nicht fest.
+        ("https://trusted.example$1", "trusted.example…"),
+        ("https://review.example.com:$1/x", "review.example.com:…"),
+        ("https://trusted.example", "trusted.example"),
+        // Benutzerangabe: Ziel ist der Host hinter dem letzten @.
+        ("https://trusted.example@evil.example/$1", "evil.example"),
+        ("https://trusted.example@$1", nil),
+        ("linear://$1", "linear://"),
     ] as [(String, String?)])
     func rewriteTarget(template: String, expected: String?) {
         #expect(RuleDescriber.rewriteTarget([Rewrite(pattern: "x", template: template)]) == expected)
@@ -223,9 +231,12 @@ struct ApprovalTests {
     @Test func summaryShowsRewriteTarget() {
         let rule = Self.redirect()
         #expect(RuleDescriber.summary(rule).contains("↻ review.example.com"))
-        // Letzte Umschreibung mit literalem Ziel gewinnt; ohne Ziel „umschreiben“.
+        // Letzte Umschreibung mit literalem Ziel gewinnt; spätere Schritte können die URL noch
+        // verändern und werden deshalb gezählt. Ohne Ziel „umschreiben“.
         let chain = [Rewrite(pattern: "a", template: "https://first.example/$1"), Rewrite(pattern: "b", template: "$1")]
-        #expect(RuleDescriber.rewriteChip(chain) == "↻ first.example")
+        #expect(RuleDescriber.rewriteChip(chain) == "↻ first.example +1 Schritt")
+        #expect(RuleDescriber.rewriteChip(chain + [Rewrite(pattern: "c", template: "")]) == "↻ first.example +2 Schritte")
+        #expect(RuleDescriber.rewriteChip(chain + [Rewrite(pattern: "c", template: "https://last.example/")]) == "↻ last.example")
         #expect(RuleDescriber.rewriteChip([Rewrite(pattern: "a", template: "$1")]) == "↻ umschreiben")
         #expect(RuleDescriber.rewriteChip([]) == nil)
         #expect(RuleApproval.countText(1) == "1 Regel wartet auf Freigabe")

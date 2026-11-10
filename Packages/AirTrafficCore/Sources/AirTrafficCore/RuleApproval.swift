@@ -96,27 +96,39 @@ public enum RuleApproval {
 extension RuleDescriber {
     /// Ziel der Umschreibungen für Kurzbeschreibungen: literaler Anfang der Vorlage bis zum ersten `$`,
     /// bei http/https nur der Host („review.example.com“), sonst Schema und Rest („linear://review“).
-    /// Mehrere Umschreibungen: die letzte mit literalem Ziel. Nil, wenn keine ein literales Ziel hat.
+    /// Mehrere Umschreibungen: die letzte mit literalem Ziel; folgen danach weitere Schritte, steht
+    /// „+1 Schritt“ bzw. „+n Schritte“ dahinter – sie können die URL noch beliebig verändern.
+    /// Nil, wenn keine ein literales Ziel hat.
     public static func rewriteTarget(_ rewrites: [Rewrite]) -> String? {
-        for rewrite in rewrites.reversed() {
-            if let target = target(ofTemplate: rewrite.template) { return target }
-        }
-        return nil
+        guard let index = rewrites.lastIndex(where: { target(ofTemplate: $0.template) != nil }),
+              let target = target(ofTemplate: rewrites[index].template)
+        else { return nil }
+        let later = rewrites.count - 1 - index
+        guard later > 0 else { return target }
+        return "\(target) +\(later) \(later == 1 ? "Schritt" : "Schritte")"
     }
 
+    /// Ziel einer Vorlage. Der Host steht nur fest, wenn er im literalen Teil endet (`/`, `?`, `#` oder
+    /// Ende der Vorlage); geht die Vorlage mitten im Host mit einer Gruppe weiter, endet das Ziel auf
+    /// „…“. Bei einer Benutzerangabe (`nutzer@host`) zählt, was hinter dem letzten `@` steht.
     static func target(ofTemplate template: String) -> String? {
-        let literal = Rewriter.literalPrefix(of: template).trimmingCharacters(in: .whitespaces)
+        let prefix = Rewriter.literalPrefix(of: template)
+        let literal = prefix.trimmingCharacters(in: .whitespaces)
         guard !literal.isEmpty else { return nil }
         guard let separator = literal.range(of: "://") else {
             return literal.count > 40 ? String(literal.prefix(40)) + "…" : literal
         }
         let scheme = literal[..<separator.lowerBound].lowercased()
         let rest = literal[separator.upperBound...]
-        let host = rest.prefix { $0 != "/" && $0 != "?" && $0 != "#" }
-        if scheme == "http" || scheme == "https" {
-            return host.isEmpty ? nil : String(host)
+        var authority = rest.prefix { $0 != "/" && $0 != "?" && $0 != "#" }
+        // Vorlage geht nach dem literalen Teil weiter, ohne dass der Host dort schon zu Ende wäre.
+        let open = prefix.count < template.count && authority.endIndex == rest.endIndex
+        if let at = authority.lastIndex(of: "@") { authority = authority[authority.index(after: at)...] }
+        guard !authority.isEmpty else {
+            return scheme == "http" || scheme == "https" ? nil : "\(scheme)://"
         }
-        return host.isEmpty ? "\(scheme)://" : "\(scheme)://\(host)"
+        let host = String(authority) + (open ? "…" : "")
+        return scheme == "http" || scheme == "https" ? host : "\(scheme)://\(host)"
     }
 
     /// Chip/Kurztext: „↻ review.example.com“, ohne literales Ziel „↻ umschreiben“.
