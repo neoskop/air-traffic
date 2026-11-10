@@ -162,6 +162,50 @@ struct RuleInputTests {
         #expect(output.warnings.count == 1 && output.warnings[0].hasPrefix("action.app"))
     }
 
+    @Test func appObjectIsCanonicalizedFromTheInstalledApp() throws {
+        // Name und Pfad kommen von der installierten App, nicht aus der Eingabe.
+        let byID = try input.makeRule(from: ["name": "X", "action": ["type": "open", "app": [
+            "bundleIdentifier": "com.google.Chrome", "displayName": "Harmlos", "path": "/Applications/Woanders.app",
+        ]]])
+        #expect(byID.rule.action == .open(FakeAppResolver.chrome))
+        let byPath = try input.makeRule(from: ["name": "X", "action": ["type": "openFirstRunning", "fallback": [
+            "path": "/Applications/Figma.app", "displayName": "Safari",
+        ]]])
+        #expect(byPath.rule.action == .openFirstRunning(fallback: FakeAppResolver.figma))
+    }
+
+    @Test func appObjectWithMismatchedIDAndPathIsError() {
+        #expect {
+            try input.makeRule(from: ["name": "X", "action": ["type": "open", "app": [
+                "bundleIdentifier": "com.figma.Desktop", "path": "/Applications/Google Chrome.app", "displayName": "Google Chrome",
+            ]]])
+        } throws: { error in
+            guard case AgentError.invalid(let issues) = error else { return false }
+            return issues.map(\.field) == ["action.app.bundleIdentifier"]
+        }
+    }
+
+    @Test func pathWithoutBundleIdentifierIsNotAnApp() {
+        let script = AppRef(bundleIdentifier: nil, path: "/Users/test/tool.command", displayName: "tool.command")
+        let input = RuleInput(resolver: FakeAppResolver(apps: [script]), browsers: [])
+        for app in [JSONValue.string(script.path), ["path": .string(script.path)]] {
+            #expect {
+                try input.makeRule(from: ["name": "X", "action": ["type": "open", "app": app]])
+            } throws: { error in
+                guard case AgentError.invalid(let issues) = error else { return false }
+                return issues.count == 1 && issues[0].field.hasPrefix("action.app") && issues[0].reason.contains("keine App")
+            }
+        }
+    }
+
+    @Test func appRefDiscrepancyNamesWhatWouldReallyOpen() {
+        let chrome = FakeAppResolver.chrome
+        #expect(chrome.discrepancy(to: chrome) == nil)
+        #expect(AppRef(bundleIdentifier: "com.google.Chrome", path: "", displayName: "google chrome").discrepancy(to: chrome) == nil)
+        let disguised = AppRef(bundleIdentifier: "com.google.Chrome", path: "/Applications/Firefox.app", displayName: "Firefox")
+        #expect(disguised.discrepancy(to: chrome) == "Die Regel nennt „Firefox“ (/Applications/Firefox.app) – geöffnet wird „Google Chrome“.")
+    }
+
     @Test func notAnObject() {
         #expect(throws: AgentError.self) { try input.makeRule(from: ["a", "b"]) }
     }

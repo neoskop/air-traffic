@@ -35,6 +35,17 @@ public struct AppRef: Codable, Sendable, Hashable {
         }
         return (path as NSString).standardizingPath == (other.path as NSString).standardizingPath
     }
+
+    /// Vergleicht die Angaben einer Regel (`self`) mit der App, die auf diesem Mac tatsächlich geöffnet
+    /// würde (`resolved`). `nil` = Name und Pfad stimmen; sonst ein Satz für die Freigabe-Karte.
+    public func discrepancy(to resolved: AppRef) -> String? {
+        let samePath = path.isEmpty
+            || (path as NSString).standardizingPath == (resolved.path as NSString).standardizingPath
+        let sameName = displayName.caseInsensitiveCompare(resolved.displayName) == .orderedSame
+        if samePath, sameName { return nil }
+        let claimed = path.isEmpty ? "„\(displayName)“" : "„\(displayName)“ (\(path))"
+        return "Die Regel nennt \(claimed) – geöffnet wird „\(resolved.displayName)“."
+    }
 }
 
 // MARK: - Config

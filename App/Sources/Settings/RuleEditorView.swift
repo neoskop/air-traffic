@@ -647,8 +647,8 @@ private struct PendingApprovalCard: View {
         VStack(alignment: .leading, spacing: 1) {
             if let action {
                 Text(ActionText.describe(action)).font(DS.help)
-                if let path = Self.appPath(action) {
-                    Text(path).font(DS.monoSmall).foregroundStyle(.secondary).textSelection(.enabled)
+                if let app = Self.targetApp(action) {
+                    ResolvedTarget(app: app)
                 }
             } else {
                 Text("–").font(DS.help).foregroundStyle(.secondary)
@@ -678,11 +678,46 @@ private struct PendingApprovalCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    static func appPath(_ action: Action) -> String? {
+    /// Ziel-App der Aktion, falls sie eine nennt.
+    static func targetApp(_ action: Action) -> AppRef? {
         switch action {
-        case .open(let app): app.path.isEmpty ? app.bundleIdentifier : app.path
-        case .openFirstRunning(let fallback?): fallback.path.isEmpty ? fallback.bundleIdentifier : fallback.path
-        case .openFirstRunning(nil), .prompt: nil
+        case .open(let app): app
+        case .openFirstRunning(let fallback): fallback
+        case .prompt: nil
+        }
+    }
+}
+
+/// Zeigt, welche App beim Freigeben tatsächlich geöffnet würde (`Apps.url(for:)`: erst Bundle-ID,
+/// sonst Pfad) – nicht die Angaben aus der Regel. Weichen Name oder Pfad der Regel davon ab, steht
+/// das rot darunter.
+private struct ResolvedTarget: View {
+    let app: AppRef
+
+    var body: some View {
+        if let url = Apps.url(for: app) {
+            let resolved = Apps.appRef(for: url)
+            VStack(alignment: .leading, spacing: 1) {
+                Text((resolved.path as NSString).standardizingPath)
+                    .font(DS.monoSmall).foregroundStyle(.secondary).textSelection(.enabled)
+                if let id = resolved.bundleIdentifier {
+                    Text(id).font(DS.monoSmall).foregroundStyle(.secondary).textSelection(.enabled)
+                }
+                if let discrepancy = app.discrepancy(to: resolved) {
+                    Label(discrepancy, systemImage: "exclamationmark.triangle.fill")
+                        .font(DS.small)
+                        .foregroundStyle(DS.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        } else {
+            Label(
+                "App nicht gefunden: \(app.path.isEmpty ? app.bundleIdentifier ?? "" : app.path)",
+                systemImage: "exclamationmark.triangle.fill"
+            )
+            .font(DS.small)
+            .foregroundStyle(DS.orange)
+            .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

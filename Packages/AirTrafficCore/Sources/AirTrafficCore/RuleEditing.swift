@@ -338,6 +338,10 @@ public struct RuleInput: Sendable {
                 issues.append(FieldIssue(field, "App „\(text)“ nicht gefunden (Name, Bundle-ID oder Pfad angeben)"))
                 return value
             }
+            if text.contains("/"), (app.bundleIdentifier ?? "").isEmpty {
+                issues.append(FieldIssue(field, "„\(text)“ ist keine App (Bundle ohne Kennung)"))
+                return value
+            }
             return (try? JSONValue(encoding: app)) ?? value
         }
         guard let object = value.objectValue else {
@@ -345,19 +349,36 @@ public struct RuleInput: Sendable {
             return value
         }
         checkKeys(object, allowed: ["bundleIdentifier", "path", "displayName"], field: field, issues: &issues)
-        let id = object["bundleIdentifier"]?.stringValue?.trimmingCharacters(in: .whitespaces)
-        var path = object["path"]?.stringValue ?? ""
-        var name = object["displayName"]?.stringValue ?? ""
-        if path.isEmpty, let id, !id.isEmpty, let found = resolveApp(id) {
-            path = found.path
-            if name.isEmpty { name = found.displayName }
-        }
-        if (id ?? "").isEmpty, path.isEmpty {
+        let id = (object["bundleIdentifier"]?.stringValue ?? "").trimmingCharacters(in: .whitespaces)
+        let path = object["path"]?.stringValue ?? ""
+        if id.isEmpty, path.isEmpty {
             issues.append(FieldIssue(field, "braucht bundleIdentifier oder path"))
             return value
         }
-        if name.isEmpty { name = path.isEmpty ? (id ?? "") : AppRef.displayName(forPath: path) }
-        let app = AppRef(bundleIdentifier: (id ?? "").isEmpty ? nil : id, path: path, displayName: name)
+        // Geöffnet wird nach Bundle-ID, angezeigt werden Name und Pfad: Beides muss dieselbe App meinen.
+        // Was auf diesem Mac auffindbar ist, kommt deshalb vom Resolver und nicht aus der Eingabe.
+        let byPath = path.isEmpty ? nil : resolveApp(path)
+        let byID = id.isEmpty ? nil : resolveApp(id)
+        if let byPath {
+            guard let actual = byPath.bundleIdentifier, !actual.isEmpty else {
+                issues.append(FieldIssue("\(field).path", "„\(path)“ ist keine App (Bundle ohne Kennung)"))
+                return value
+            }
+            if !id.isEmpty, actual.caseInsensitiveCompare(id) != .orderedSame {
+                issues.append(FieldIssue(
+                    "\(field).bundleIdentifier",
+                    "„\(id)“ passt nicht zur App unter path („\(byPath.displayName)“ hat „\(actual)“)"
+                ))
+                return value
+            }
+        }
+        if let installed = byID ?? byPath {
+            return (try? JSONValue(encoding: installed)) ?? value
+        }
+        // Nicht auffindbar: Kennung und Pfad übernehmen; der Name kommt aus dem Dateinamen bzw. der
+        // Kennung und ist nie frei wählbar.
+        let name = path.isEmpty ? id : AppRef.displayName(forPath: path)
+        let app = AppRef(bundleIdentifier: id.isEmpty ? nil : id, path: path, displayName: name)
         return (try? JSONValue(encoding: app)) ?? value
     }
 
