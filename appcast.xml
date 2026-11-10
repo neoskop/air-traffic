@@ -6,6 +6,22 @@
     <description>Updates für Air Traffic</description>
     <language>de</language>
     <item>
+      <title>Version 1.0.2</title>
+      <pubDate>Tue, 10 Nov 2026 22:31:05 +0000</pubDate>
+      <sparkle:version>9</sparkle:version>
+      <sparkle:shortVersionString>1.0.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+<ul>
+<li>Regel-Editor: Die Vorschau einer Umschreibung prüft reguläre Ausdrücke jetzt mit Zeitbudget. Ein ungünstiges Muster kann Air Traffic nicht mehr einfrieren.</li>
+<li>Konfiguration: Eine Datei aus einer neueren Version von Air Traffic oder eine Datei, die sich gerade nicht lesen lässt, wird nicht mehr als defekt beiseitegelegt. Lade- und Speicherfehler stehen jetzt oben auf jedem Tab der Einstellungen.</li>
+<li>Freigabe: Die Karte zeigt Pfad und Bundle-ID der App, die tatsächlich geöffnet wird, und warnt, wenn die Angaben der Regel abweichen. Widersprüchliche App-Angaben von Agenten werden abgelehnt.</li>
+<li>Umschreib-Chip: Ist der Host in der Vorlage nicht abgeschlossen, endet das Ziel auf „…“. Folgen weitere Umschreibungen, steht „+1 Schritt“ dahinter.</li>
+</ul>
+      ]]></description>
+      <enclosure url="https://github.com/neoskop/air-traffic/releases/download/v1.0.2/Air-Traffic-1.0.2.zip" length="7741292" type="application/octet-stream" sparkle:edSignature="dia9BQFjZJBE/jmtEECJB/1/1TklHX2wuWIJlcC92kwP9cDa8m9h2rbsRK0zPOaZtUZ7PJPhClviPBnE6BuyBA=="/>
+    </item>
+    <item>
       <title>Version 1.0.1</title>
       <pubDate>Fri, 06 Nov 2026 14:22:12 +0000</pubDate>
       <sparkle:version>8</sparkle:version>
