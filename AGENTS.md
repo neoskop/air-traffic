@@ -48,6 +48,10 @@ ausdrücklichen Wunsch des Maintainers:
 - **Freigabe:** Was über `airtraffic` oder MCP an Umschreibungen oder Aktion einer Regel geändert wird (auch
   neue Regeln), wirkt erst nach „Freigeben“ in der App. Es gibt keinen Befehl und kein Tool zum Freigeben,
   und `pendingChange` in Eingaben wird abgelehnt.
+- **iCloud-Sync:** überträgt nur freigegebene Stände (`rule.effective`); neu angelegte wartende Regeln verlassen
+  den Mac nicht, und `pendingChange` aus `sync.json` wird beim Lesen verworfen (`SyncedRule`). Was über
+  `sync.json` ankommt, wirkt ohne erneute Freigabe auf allen Macs – wie direktes Bearbeiten von `config.json`;
+  wartende Stände verlassen den Mac nie.
 - **Schema nach dem Umschreiben:** nur `http`/`https`, das Schema der Original-URL oder eines, das literal am
   Anfang der Vorlage steht. `file:` nur, wenn der Link schon `file:` war. Air Traffic öffnet `airtraffic://`
   nie selbst.

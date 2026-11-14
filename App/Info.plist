@@ -42,6 +42,8 @@
 	<true/>
 	<key>SUAllowsAutomaticUpdates</key>
 	<true/>
+	<key>NSFileProviderDomainUsageDescription</key>
+	<string>Air Traffic speichert deine synchronisierten Regeln in iCloud Drive.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Neoskop GmbH</string>
 	<key>CFBundleURLTypes</key>

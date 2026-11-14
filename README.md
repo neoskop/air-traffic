@@ -35,13 +35,15 @@ Standardaktion – zum Beispiel ein kleines Auswahlfenster mit allen Browsern.
   auf Wunsch mit eigenem Verhalten (Regeln aus, eigene Aktion).
 - **Kommandozeile & KI-Agenten:** `airtraffic` liest, prüft und ändert Regeln im Terminal und
   läuft als MCP-Server für Claude Code, Codex & Co. – mit Sicherung vor jeder Änderung.
+- **iCloud-Sync:** hält Regeln, Standardaktion, Safari-Verhalten und Darstellung auf mehreren Macs gleich –
+  über eine Datei in iCloud Drive, Merge pro Regel, wartende Regeln erst nach der Freigabe.
 - **Choosy-Import:** übernimmt Regeln und Browserliste aus Choosy.
 - **Updates:** prüft täglich auf neue Versionen (Sparkle) und installiert sie automatisch –
   sobald weder Auswahlfenster noch Einstellungen offen sind.
 - **Hell und dunkel:** folgt standardmäßig macOS; unter Allgemein → Darstellung fest auf Hell oder Dunkel stellbar.
 
 Die Einstellungen haben sechs Tabs: **Allgemein** (Standardbrowser, Standardaktion, KI-Assistent,
-Darstellung, Choosy-Import und Konfigurationsdatei), **Browser**, **Regeln**, **Safari**, **CLI & MCP** und **Updates**.
+iCloud-Sync, Darstellung, Choosy-Import und Konfigurationsdatei), **Browser**, **Regeln**, **Safari**, **CLI & MCP** und **Updates**.
 
 | Auswahlfenster | Allgemein |
 |---|---|
@@ -140,6 +142,35 @@ codex mcp add air-traffic -- ~/.local/bin/airtraffic mcp
 Tools: `describe_rule_format`, `list_rules`, `get_rule`, `create_rule`, `update_rule`, `move_rule`,
 `set_rule_enabled`, `delete_rule`, `check_url`, `list_browsers`, `get_settings`. Der Server arbeitet nur
 lokal mit der Konfigurationsdatei: kein Netzwerk, kein Schlüsselbund, er öffnet keine Links.
+
+## iCloud-Sync
+
+Unter Allgemein → iCloud-Sync „Regeln über iCloud synchronisieren“ einschalten – auf jedem Mac, der mitmachen soll.
+
+- **Was synchronisiert wird:** Regeln samt Reihenfolge, die Standardaktion, das Safari-Verhalten und die
+  Darstellung. Browserliste und KI-Assistent enthalten Mac-spezifische Pfade und bleiben auf jedem Mac,
+  der API-Key bleibt im Schlüsselbund.
+- **Merge pro Regel:** Je Regel gewinnt die jüngere Änderung; Änderungen an verschiedenen Regeln auf zwei Macs
+  gehen beide durch. Reihenfolge und jede Einstellung haben je einen eigenen Zeitstempel. Beim ersten Einschalten
+  gewinnt bei gleicher Regel der Stand in iCloud, eigene Regeln kommen dazu, inhaltsgleiche Dubletten entfallen.
+  Ausschalten vergisst den Sync-Stand dieses Macs; erneutes Einschalten ist wieder ein erstes Einschalten – was du
+  in der Zwischenzeit lokal gelöscht hast, kommt aus iCloud zurück, statt auf allen Macs gelöscht zu werden.
+- **Freigabe:** Übertragen wird nur der freigegebene Stand einer Regel. Neu angelegte Regeln, die auf Freigabe
+  warten, verlassen den Mac erst nach „Freigeben“; bei geänderten wartenden Regeln geht der zuletzt freigegebene
+  Stand hinaus. Wartende Änderungen aus der Sync-Datei werden verworfen.
+- **Sicherung:** Bevor ein Sync die lokale Konfiguration ändert, legt Air Traffic eine Sicherung im Ordner
+  `backups/` an. Hat die Kommandozeile die Datei inzwischen geändert, bricht die Runde ab und versucht es neu.
+- **Löschungen** werden als Tombstones übertragen, damit kein anderer Mac die Regel wiederbelebt; sie verfallen
+  nach 365 Tagen. War ein Mac länger nicht synchronisiert, gelten seine unveränderten Regeln, die in iCloud fehlen,
+  als gelöscht.
+- **Grenzen:** höchstens 2 MB und 1000 Regeln in `sync.json` – beim Lesen und beim Schreiben; darüber wird
+  nichts übernommen bzw. übertragen. Zeitstempel aus iCloud zählen höchstens 5 Minuten in die Zukunft.
+- **Ablage:** `~/Library/Mobile Documents/com~apple~CloudDocs/Air Traffic/sync.json` (iCloud Drive → Air Traffic);
+  der Stand je Mac liegt in `config.sync-state.json` neben `config.json`. `AIRTRAFFIC_SYNC_DIR=<ordner>` lenkt
+  auf einen anderen, vorhandenen Ordner um (Tests, Debug).
+- Synchronisiert wird beim Start, kurz nach jeder Änderung, bei Änderungen in iCloud Drive, alle 5 Minuten und
+  mit „Jetzt synchronisieren“. Kommandozeile und MCP-Server synchronisieren nicht selbst; ihre Änderungen nimmt
+  die laufende App mit.
 
 ## Bauen aus dem Quellcode
 
@@ -271,6 +302,9 @@ werden. Bereits veröffentlichte, notarisierte Versionen laufen weiter.
   `check` und die URL-Prüfung. Agenten können nicht freigeben (kein Befehl, kein Tool). Nach jeder Änderung von
   außen erscheint eine Mitteilung „Regeln von außen geändert“; ohne Mitteilungs-Berechtigung bleibt die orange
   Zeile im Einstellungsfenster.
+- **iCloud-Sync und Freigabe:** Was über `sync.json` ankommt, wirkt ohne erneute Freigabe auf allen Macs – wie
+  direktes Bearbeiten von `config.json`. Wartende Stände verlassen den Mac nie: Übertragen wird nur, was auf einem
+  Mac freigegeben ist, und wartende Änderungen in der Sync-Datei werden verworfen.
 - **Ziel sichtbar:** Kurzbeschreibungen zeigen bei Umschreibungen das Ziel (z. B. „↻ review.example.com“).
   Steht der Host in der Vorlage nicht vollständig fest, endet er auf „…“; folgen weitere Umschreibungen,
   steht „+1 Schritt“ dahinter – beides heißt: Das Ziel kann sich noch ändern.
@@ -298,6 +332,8 @@ werden. Bereits veröffentlichte, notarisierte Versionen laufen weiter.
 - Der OpenRouter-API-Key liegt nur im macOS-Schlüsselbund, nie in der Konfigurationsdatei oder im Log.
   Claude Code und Codex nutzen ihre eigene Anmeldung; Air Traffic sieht keine Zugangsdaten.
 - Die Update-Prüfung lädt nur `appcast.xml` von GitHub; Updates werden über ihre EdDSA-Signatur geprüft.
+- Mit iCloud-Sync liegen deine Regeln (inklusive Bedingungen, Umschreibungen und Test-URLs) in iCloud Drive. Ohne
+  erweiterten Datenschutz für iCloud sind sie dort nicht Ende-zu-Ende-verschlüsselt – Apple könnte sie technisch lesen.
 - `airtraffic` und der MCP-Server arbeiten nur lokal mit der Konfigurationsdatei: kein Netzwerk, kein
   Schlüsselbund, sie öffnen keine Links und ändern nicht den Standardbrowser. Was ein KI-Agent über den
   MCP-Server liest (deine Regeln), sieht natürlich auch dessen Anbieter.
