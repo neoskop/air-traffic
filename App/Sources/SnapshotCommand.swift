@@ -11,7 +11,7 @@ enum SnapshotCommand {
     static let flag = "--snapshot"
 
     private static let settingsSize = NSSize(width: 980, height: 720)
-    private static let fullPageSize = NSSize(width: 980, height: 1100)
+    private static let fullPageSize = NSSize(width: 980, height: 1300)
     /// Tabs „CLI & MCP“ und „Updates“.
     private static let smallPageSize = NSSize(width: 980, height: 620)
 
@@ -103,8 +103,8 @@ enum SnapshotCommand {
                 model.ruleQuery = ""
             }
 
-            // Ganze Seite „Allgemein“ mit allen Abschnitten inkl. „Darstellung“, je einmal pro
-            // Anbieter-Art.
+            // Ganze Seite „Allgemein“ mit allen Abschnitten inkl. „iCloud-Sync“ (aus – im Snapshot gibt es
+            // keinen Sync) und „Darstellung“, je einmal pro Anbieter-Art.
             let savedAssistant = model.config.assistant
             for (name, provider) in [("general-full", AssistantProvider.openRouter), ("general-claude", .claudeCLI)] {
                 model.updateAssistant { $0.provider = provider }

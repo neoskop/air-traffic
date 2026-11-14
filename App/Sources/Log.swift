@@ -7,6 +7,8 @@ enum Log {
     static let opener = Logger(subsystem: subsystem, category: "opener")
     static let config = Logger(subsystem: subsystem, category: "config")
     static let chooser = Logger(subsystem: subsystem, category: "chooser")
+    /// iCloud-Sync: Zähler und Regelnamen öffentlich, Pfade privat.
+    static let sync = Logger(subsystem: subsystem, category: "sync")
     /// Nur Fehlerarten – nie Key, Prompt-Inhalt oder URLs.
     static let assistant = Logger(subsystem: subsystem, category: "assistant")
 }

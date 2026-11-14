@@ -180,14 +180,15 @@ struct ProblemBanner: View {
     }
 }
 
-/// Orange Zeile oben im Einstellungsfenster, wenn die Regeln von außen geändert wurden.
+/// Orange Zeile oben im Einstellungsfenster, wenn die Regeln von außen oder über iCloud geändert wurden.
 /// Verschwindet nach 6 s oder bei Klick.
 struct ExternalChangeBanner: View {
     let model: AppModel
 
     /// Mit Zähler wartender Regeln – auch ohne Mitteilungs-Berechtigung sichtbar.
     private var text: String {
-        let base = "Regeln wurden von außen geändert und neu geladen."
+        let base = model.externalChangeSyncSummary.map { "Regeln über iCloud aktualisiert (\($0))." }
+            ?? "Regeln wurden von außen geändert und neu geladen."
         let pending = model.pendingRuleCount
         return pending > 0 ? "\(base) \(RuleApproval.countText(pending)) (Tab „Regeln“)." : base
     }

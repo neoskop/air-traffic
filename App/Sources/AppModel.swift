@@ -50,6 +50,8 @@ final class AppModel {
 
     /// Hinweis „Regeln wurden von außen geändert und neu geladen.“ (orange Zeile, 6 s oder Klick).
     private(set) var showsExternalChangeNotice = false
+    /// Zusammenfassung, wenn der Hinweis von iCloud-Sync stammt; `nil` = Änderung von außen (CLI/MCP, Hand).
+    private(set) var externalChangeSyncSummary: String?
     /// Zählt Neuladen von außen.
     private(set) var externalReloadCount = 0
     /// Zählt nur Neuladen, bei denen sich die ausgewählte Regel geändert hat (bzw. Import „Ersetzen“);
@@ -62,6 +64,16 @@ final class AppModel {
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     /// Nach jeder Übernahme einer Änderung von außen: macOS-Mitteilung. Setzt der AppDelegate.
     @ObservationIgnored var onExternalChange: ((Config) -> Void)?
+    /// Nach Übernahme eines Stands aus iCloud: macOS-Mitteilung mit Zusammenfassung. Setzt der AppDelegate.
+    @ObservationIgnored var onSyncedChange: ((Config, String) -> Void)?
+    /// Nach eigenem Speichern (`external == false`) und nach Übernahme einer Änderung von außen
+    /// (`external == true`), nicht nach `adoptSynced`: Anstoß für iCloud-Sync. Setzt der AppDelegate.
+    @ObservationIgnored var onDiskStateChanged: ((_ external: Bool) -> Void)?
+    /// Fingerabdruck des Stands, der zuletzt vor einem iCloud-Sync gesichert wurde – derselbe Stand wird
+    /// nicht bei jedem neuen Versuch erneut gesichert.
+    @ObservationIgnored private var lastSyncBackupFingerprint: String?
+    /// iCloud-Sync; `nil` in `--snapshot` und Debug-Schaltern (Abschnitt zeigt dann „Aus“).
+    @ObservationIgnored weak var iCloudSync: ICloudSync?
 
     /// Ausgewählter Tab im Einstellungsfenster (z. B. Sprung zu „Allgemein“ aus dem Regel-Editor).
     var settingsTab: SettingsTab = .general
@@ -351,22 +363,100 @@ final class AppModel {
     private func saveNow() {
         saveTask = nil
         guard persists, !isReadOnly else { return }
+        switch persist() {
+        case .saved:
+            onDiskStateChanged?(false)
+        case .conflict(let current):
+            Log.config.info("Speichern übersprungen: Konfiguration wurde von außen geändert")
+            applyExternal(current)
+        case .failed:
+            break
+        }
+    }
+
+    private enum PersistOutcome {
+        case saved
+        case conflict(ConfigSnapshot)
+        /// Fehler steht in `problem`.
+        case failed
+    }
+
+    /// Schreibt `config` über den Konflikt-Speicherweg (`save(_:ifUnchangedSince:)`).
+    private func persist() -> PersistOutcome {
         do {
             switch try store.save(config, ifUnchangedSince: knownFingerprint) {
             case .saved(let fingerprint):
                 knownFingerprint = fingerprint
                 if problem?.hasPrefix("Speichern") == true || problem?.hasPrefix("Von außen") == true { problem = nil }
+                return .saved
             case .conflict(let current):
-                Log.config.info("Speichern übersprungen: Konfiguration wurde von außen geändert")
-                applyExternal(current)
+                return .conflict(current)
             case .conflictUnreadable(let message):
                 problem = "Von außen geändert, aber nicht lesbar (\(message)) – deine Änderung wurde nicht gespeichert."
                 Log.config.error("Speichern übersprungen: Datei von außen geändert und nicht lesbar")
+                return .failed
             }
         } catch {
             problem = "Speichern fehlgeschlagen: \(error.localizedDescription)"
             Log.config.error("Speichern fehlgeschlagen: \(String(describing: error), privacy: .private)")
+            return .failed
         }
+    }
+
+    // MARK: iCloud-Sync
+
+    /// Ergebnis von `adoptSynced`.
+    enum SyncAdoption: Equatable {
+        case saved
+        /// Konfiguration wurde inzwischen von außen geändert; dieser Stand ist jetzt übernommen.
+        case conflict
+        /// Nicht gesichert oder nicht gespeichert; Text für den Sync-Status.
+        case failed(String)
+    }
+
+    /// Übernimmt einen Stand aus iCloud und speichert ihn sofort über den Konflikt-Speicherweg; vorher
+    /// wird der bisherige Stand gesichert (derselbe Stand nur einmal). Bei allem außer `.saved` bricht der
+    /// Aufrufer die Runde ab.
+    func adoptSynced(_ synced: Config, summary: String) -> SyncAdoption {
+        guard persists, !isReadOnly else { return .failed("Konfiguration ist schreibgeschützt.") }
+        saveTask?.cancel()
+        saveTask = nil
+        let previous = config
+        do {
+            let fingerprint = ConfigStore.fingerprint(try ConfigStore.encode(previous))
+            if fingerprint != lastSyncBackupFingerprint {
+                try store.writeBackup(of: previous)
+                lastSyncBackupFingerprint = fingerprint
+            }
+        } catch {
+            Log.config.error("Sicherung vor iCloud-Sync fehlgeschlagen: \(String(describing: error), privacy: .private)")
+            return .failed("Sicherung vor dem Sync fehlgeschlagen: \(error.localizedDescription)")
+        }
+        let selectedBefore = rule(withID: selectedRuleID)
+        isApplyingExternalChange = true
+        config = synced
+        isApplyingExternalChange = false
+        switch persist() {
+        case .saved:
+            break
+        case .conflict(let current):
+            Log.config.info("iCloud-Stand nicht gespeichert: Konfiguration wurde inzwischen von außen geändert")
+            applyExternal(current)
+            return .conflict
+        case .failed:
+            // Zurück auf den Stand der Platte; der nächste Sync versucht es erneut.
+            isApplyingExternalChange = true
+            config = previous
+            isApplyingExternalChange = false
+            return .failed(problem ?? "Speichern fehlgeschlagen.")
+        }
+        if let id = selectedRuleID, ruleIndex(id) == nil { selectedRuleID = nil }
+        externalReloadCount += 1
+        if rule(withID: selectedRuleID) != selectedBefore { editorResetCount += 1 }
+        Log.config.info("Regeln über iCloud aktualisiert: \(summary, privacy: .public), wartend: \(self.pendingRuleCount)")
+        showExternalChangeNotice(syncSummary: summary)
+        onSyncedChange?(config, summary)
+        return .saved
     }
 
     // MARK: Änderungen von außen
@@ -415,11 +505,13 @@ final class AppModel {
         // Regeln ohne `id` (von Hand bearbeitet): vergebene IDs zurückschreiben.
         if snapshot.hasRulesWithoutID { scheduleSave() }
         Log.config.info("Konfiguration von außen geändert und neu geladen, wartend: \(self.pendingRuleCount)")
-        showExternalChangeNotice()
+        showExternalChangeNotice(syncSummary: nil)
         onExternalChange?(config)
+        onDiskStateChanged?(true)
     }
 
-    private func showExternalChangeNotice() {
+    private func showExternalChangeNotice(syncSummary: String?) {
+        externalChangeSyncSummary = syncSummary
         showsExternalChangeNotice = true
         noticeTask?.cancel()
         noticeTask = Task { [weak self] in

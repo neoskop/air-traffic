@@ -24,6 +24,9 @@ final class ConfigFileWatcher {
         armFileSource()
     }
 
+    /// Der Ordner wird beobachtet (existierte beim Anlegen).
+    var isWatchingDirectory: Bool { directorySource != nil }
+
     func stop() {
         pending?.cancel()
         directorySource?.cancel()

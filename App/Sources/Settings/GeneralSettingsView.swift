@@ -3,7 +3,7 @@ import AppKit
 import SwiftUI
 
 /// Einstellungen → Allgemein: Problem-Hinweis · Status · „Wenn keine Regel passt“ ·
-/// KI-Assistent · Darstellung · Import & Konfiguration. Safari, CLI & MCP und Updates haben eigene Tabs.
+/// KI-Assistent · iCloud-Sync · Darstellung · Import & Konfiguration. Safari, CLI & MCP und Updates haben eigene Tabs.
 struct GeneralSettingsView: View {
     @Bindable var model: AppModel
     @State private var isDefault = Apps.isAirTrafficDefaultBrowser
@@ -23,6 +23,8 @@ struct GeneralSettingsView: View {
             }
 
             AssistantSettingsSection(model: model)
+
+            ICloudSyncSettingsSection(sync: model.iCloudSync)
 
             appearanceSection
 

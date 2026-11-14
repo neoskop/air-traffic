@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     let opener: Opener
     let intake: LinkIntake
     let updates: UpdateController
+    let iCloudSync: ICloudSync
     private let notifier = ExternalChangeNotifier()
     private var settingsController: SettingsWindowController?
 
@@ -29,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         opener = Opener(model: model, chooser: chooser)
         intake = LinkIntake(model: model, opener: opener)
         updates = UpdateController(startingUpdater: true)
+        iCloudSync = ICloudSync(model: model)
         super.init()
         // Darstellung aus der Config, bevor das erste Fenster (Auswahl oder Einstellungen) erscheint.
         model.appliesAppearance = true
@@ -41,11 +43,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         // Mitteilung bei Änderungen von außen; Klick öffnet die erste wartende Regel.
         model.onExternalChange = { [weak self] config in self?.notifier.post(for: config) }
+        model.onSyncedChange = { [weak self] config, summary in self?.notifier.post(for: config, syncSummary: summary) }
+        // iCloud-Sync: nach eigenem Speichern und nach Übernahme von außen entprellt anstoßen.
+        model.iCloudSync = iCloudSync
+        model.onDiskStateChanged = { [weak self] external in self?.iCloudSync.diskStateChanged(external: external) }
         UNUserNotificationCenter.current().delegate = self
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         Log.app.info("Gestartet, Konfiguration: \(self.model.store.fileURL.path, privacy: .public)")
+        iCloudSync.start()
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: .milliseconds(500))
             guard let self, !self.receivedLink else { return }
