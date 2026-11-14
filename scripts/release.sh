@@ -116,7 +116,7 @@ if [[ $CHECK_IDENTITY -eq 1 ]]; then
   exit 0
 fi
 [[ -n "$VERSION" ]] || usage 64
-[[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]] || die "Version „$VERSION“ hat nicht die Form 1.4 oder 1.4.2"
+[[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]] || die "Version „${VERSION}“ hat nicht die Form 1.4 oder 1.4.2"
 if [[ $NO_SIGN -eq 1 && $DRY_RUN -eq 0 ]]; then die "--no-sign nur zusammen mit --dry-run"; fi
 
 # --- Voraussetzungen -----------------------------------------------------------
@@ -148,7 +148,7 @@ if [[ -z "$NOTES" && -f CHANGELOG.md ]]; then
   ' CHANGELOG.md | sed -e '/./,$!d')"
 fi
 if [[ -z "${NOTES//[[:space:]]/}" ]]; then
-  [[ $DRY_RUN -eq 1 ]] || die "Keine Release-Notes: --notes angeben oder Abschnitt „## $VERSION“ in CHANGELOG.md anlegen"
+  [[ $DRY_RUN -eq 1 ]] || die "Keine Release-Notes: --notes angeben oder Abschnitt „## ${VERSION}“ in CHANGELOG.md anlegen"
   NOTES="- Air Traffic $VERSION"
 fi
 
@@ -251,7 +251,7 @@ SMOKE_JSON="$(AIRTRAFFIC_CONFIG_PATH="$SMOKE_DIR/config.json" "$HELPER" check "h
   || die "Rauchtest: airtraffic check schlägt fehl: $SMOKE_JSON"
 SMOKE_URL="$(plutil -extract decision.finalURL raw - <<<"$SMOKE_JSON" 2>/dev/null || echo "?")"
 [[ "$SMOKE_URL" == "https://ok.example/a?b=1" ]] \
-  || die "Rauchtest: Umschreibung ergibt „$SMOKE_URL“ statt https://ok.example/a?b=1"
+  || die "Rauchtest: Umschreibung ergibt „${SMOKE_URL}“ statt https://ok.example/a?b=1"
 SMOKE_MCP="$(printf '%s\n' \
   '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"release-smoke","version":"0"}}}' \
   '{"jsonrpc":"2.0","id":2,"method":"tools/list"}' \
@@ -309,7 +309,7 @@ if [[ $NO_SIGN -eq 0 ]]; then
     die "Kommandozeilen-Tool trägt noch get-task-allow"
   fi
 
-  step "Notarisierung (Profil „$NOTARY_PROFILE“, dauert meist 1–5 min)"
+  step "Notarisierung (Profil „${NOTARY_PROFILE}“, dauert meist 1–5 min)"
   NOTARIZE_ZIP="$DIST/notarize-$VERSION.zip"
   rm -f "$NOTARIZE_ZIP"
   ditto -c -k --keepParent "$APP" "$NOTARIZE_ZIP"
